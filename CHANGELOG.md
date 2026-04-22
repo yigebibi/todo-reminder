@@ -12,9 +12,11 @@
 
 ---
 
-## [0.1.0-alpha] — 2026-04-22
+## [0.1.0] — 2026-04-22
 
-第一個可用開發版本，MVP 功能雛形完成。
+第一個可用版本。MVP 功能雛形完成，能安裝到系統正常使用。
+
+> 原計劃標為 `0.1.0-alpha`，但 MSI 打包不支援非數字 pre-release 標籤（Windows Installer 版本必須 `MAJOR.MINOR.BUILD.REVISION` 純數字），所以拉直到 `0.1.0`。下一個開發版走 `0.2.0-1` 或 `0.2.0-2` 數字 pre-release 即可保留 MSI 打包。
 
 ### Added
 - Tauri v2 + React 18 + TypeScript 專案骨架

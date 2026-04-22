@@ -1,0 +1,236 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Sparkles, CalendarDays, CalendarRange, ListTodo, CheckCheck } from 'lucide-react';
+import * as chrono from 'chrono-node';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { TaskCard } from '../components/TaskCard';
+import { TaskForm, type TaskFormValues } from '../components/TaskForm';
+import {
+  selectBacklog,
+  selectDone7d,
+  selectThisWeek,
+  selectToday,
+  useTaskStore,
+} from '../stores/taskStore';
+import { toUnix } from '../lib/datetime';
+import type { Task } from '../types/models';
+import { cn } from '../lib/utils';
+
+type ColumnKey = 'today' | 'week' | 'backlog' | 'done';
+
+import type { LucideIcon } from 'lucide-react';
+
+const COLUMNS: {
+  key: ColumnKey;
+  label: string;
+  icon: LucideIcon;
+  accent: string;
+  headerDot: string;
+  emptyHint: string;
+}[] = [
+  {
+    key: 'today',
+    label: '今天',
+    icon: CalendarDays,
+    accent: 'bg-[hsl(var(--col-today-bg))]',
+    headerDot: 'bg-[hsl(var(--col-today-accent))]',
+    emptyHint: '今天沒事～',
+  },
+  {
+    key: 'week',
+    label: '本週',
+    icon: CalendarRange,
+    accent: 'bg-[hsl(var(--col-week-bg))]',
+    headerDot: 'bg-[hsl(var(--col-week-accent))]',
+    emptyHint: '本週沒事',
+  },
+  {
+    key: 'backlog',
+    label: '待辦',
+    icon: ListTodo,
+    accent: 'bg-[hsl(var(--col-backlog-bg))]',
+    headerDot: 'bg-[hsl(var(--col-backlog-accent))]',
+    emptyHint: '沒有待辦',
+  },
+  {
+    key: 'done',
+    label: '近 7 天完成',
+    icon: CheckCheck,
+    accent: 'bg-[hsl(var(--col-done-bg))]',
+    headerDot: 'bg-[hsl(var(--col-done-accent))]',
+    emptyHint: '還沒有完成的任務',
+  },
+];
+
+export function KanbanView() {
+  const tasks = useTaskStore((s) => s.tasks);
+  const reminderMap = useTaskStore((s) => s.reminderMap);
+  const loading = useTaskStore((s) => s.loading);
+  const error = useTaskStore((s) => s.error);
+  const loadAll = useTaskStore((s) => s.loadAll);
+  const add = useTaskStore((s) => s.add);
+  const patch = useTaskStore((s) => s.patch);
+  const complete = useTaskStore((s) => s.complete);
+  const uncomplete = useTaskStore((s) => s.uncomplete);
+  const remove = useTaskStore((s) => s.remove);
+  const setReminder = useTaskStore((s) => s.setReminder);
+  const clearReminder = useTaskStore((s) => s.clearReminder);
+
+  const [quickTitle, setQuickTitle] = useState('');
+  const [editing, setEditing] = useState<Task | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  const columns = useMemo(() => {
+    const state = useTaskStore.getState();
+    return {
+      today: selectToday(state),
+      week: selectThisWeek(state),
+      backlog: selectBacklog(state),
+      done: selectDone7d(state),
+    };
+  }, [tasks]);
+
+  async function handleQuickAdd(e: React.FormEvent) {
+    e.preventDefault();
+    const title = quickTitle.trim();
+    if (!title) return;
+    const parsed = chrono.parseDate(title, new Date(), { forwardDate: true });
+    await add({ title, due_at: parsed ? toUnix(parsed) : null });
+    setQuickTitle('');
+  }
+
+  function openCreate() {
+    setEditing(null);
+    setFormOpen(true);
+  }
+
+  function openEdit(task: Task) {
+    setEditing(task);
+    setFormOpen(true);
+  }
+
+  async function handleFormSubmit(values: TaskFormValues) {
+    const { reminder_offset, ...taskInput } = values;
+    let taskId: number;
+    if (editing) {
+      const updated = await patch(editing.id, taskInput);
+      taskId = updated.id;
+    } else {
+      const created = await add(taskInput);
+      taskId = created.id;
+    }
+    if (values.due_at != null && reminder_offset != null) {
+      await setReminder(taskId, values.due_at, reminder_offset);
+    } else {
+      await clearReminder(taskId);
+    }
+  }
+
+  async function handleFormDelete() {
+    if (editing) await remove(editing.id);
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-border/60 px-6 py-3">
+        <form onSubmit={handleQuickAdd} className="flex gap-2">
+          <div className="relative flex-1">
+            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={quickTitle}
+              onChange={(e) => setQuickTitle(e.target.value)}
+              placeholder='輸入任務與時間，如：「明天下午 3 點跟 Kevin 開會」'
+              className="pl-9"
+            />
+          </div>
+          <Button type="submit" disabled={!quickTitle.trim()}>
+            <Plus className="mr-1 h-4 w-4" />
+            新增
+          </Button>
+          <Button type="button" variant="outline" onClick={openCreate}>
+            進階
+          </Button>
+        </form>
+      </div>
+
+      {error && (
+        <div className="mx-6 mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <div className="grid flex-1 grid-cols-4 gap-4 overflow-hidden px-6 py-5">
+        {COLUMNS.map((col) => {
+          const items = columns[col.key];
+          const Icon = col.icon;
+          return (
+            <div
+              key={col.key}
+              className={cn(
+                'flex min-h-0 flex-col rounded-xl border border-border/50',
+                col.accent
+              )}
+            >
+              <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
+                <div className="flex items-center gap-2">
+                  <span className={cn('h-2 w-2 rounded-full', col.headerDot)} />
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2.2} />
+                  <h3 className="text-[13px] font-semibold">{col.label}</h3>
+                </div>
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {items.length}
+                </span>
+              </div>
+              <div className="flex-1 space-y-2 overflow-y-auto p-2">
+                {items.length === 0 ? (
+                  <div className="mt-8 flex flex-col items-center gap-2 py-8 text-center">
+                    <div
+                      className={cn(
+                        'flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border/70',
+                        'text-muted-foreground/70'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">{col.emptyHint}</p>
+                  </div>
+                ) : (
+                  items.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      hasReminder={!!reminderMap[task.id]}
+                      onToggleDone={() =>
+                        task.status === 'done' ? uncomplete(task.id) : complete(task.id)
+                      }
+                      onOpen={() => openEdit(task)}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {loading && tasks.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60 text-sm text-muted-foreground">
+          載入中…
+        </div>
+      )}
+
+      <TaskForm
+        open={formOpen}
+        task={editing}
+        initialReminderOffset={editing ? reminderMap[editing.id]?.offsetMinutes ?? null : null}
+        onOpenChange={setFormOpen}
+        onSubmit={handleFormSubmit}
+        onDelete={editing ? handleFormDelete : undefined}
+      />
+    </div>
+  );
+}

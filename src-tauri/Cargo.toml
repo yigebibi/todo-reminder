@@ -1,0 +1,41 @@
+[package]
+name = "todo-reminder"
+version = "0.1.0-alpha"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "todo_reminder_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-sql = { version = "2.4.0", features = ["sqlite"] }
+tauri-plugin-notification = "2.3.3"
+tauri-plugin-autostart = "2.5.1"
+tauri-plugin-single-instance = "2.4.1"
+tauri-plugin-window-state = "2.4.1"
+tauri-plugin-log = "2.8.0"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "macros"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+tokio = { version = "1", features = ["time", "sync"] }
+log = "0.4"
+# Called directly (bypassing tauri-plugin-notification) so we can always set AUMID
+# on Windows -- the plugin intentionally skips it in dev builds.
+notify-rust = "4.11"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation"] }
+

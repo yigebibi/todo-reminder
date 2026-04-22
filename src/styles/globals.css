@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 71% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 9% 46%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 93%;
+    --accent-foreground: 224 71% 4%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
+    --radius: 0.6rem;
+
+    /* Column accents (pastel) */
+    --col-today-bg: 214 95% 97%;
+    --col-today-accent: 217 91% 60%;
+    --col-week-bg: 270 95% 97%;
+    --col-week-accent: 271 81% 56%;
+    --col-backlog-bg: 220 14% 96%;
+    --col-backlog-accent: 220 9% 46%;
+    --col-done-bg: 142 69% 96%;
+    --col-done-accent: 142 71% 45%;
+
+    /* Priority dots */
+    --prio-low: 220 9% 64%;
+    --prio-med: 199 89% 48%;
+    --prio-high: 38 92% 50%;
+    --prio-urgent: 0 84% 60%;
+  }
+
+  .dark {
+    --background: 224 15% 9%;
+    --foreground: 220 14% 92%;
+    --card: 224 15% 11%;
+    --card-foreground: 220 14% 92%;
+    --primary: 217 91% 64%;
+    --primary-foreground: 224 71% 4%;
+    --secondary: 220 13% 16%;
+    --secondary-foreground: 220 14% 82%;
+    --muted: 220 13% 14%;
+    --muted-foreground: 220 9% 60%;
+    --accent: 220 13% 18%;
+    --accent-foreground: 220 14% 92%;
+    --destructive: 0 63% 48%;
+    --destructive-foreground: 220 14% 96%;
+    --border: 220 13% 18%;
+    --input: 220 13% 18%;
+    --ring: 217 91% 64%;
+
+    --col-today-bg: 217 30% 15%;
+    --col-today-accent: 217 91% 68%;
+    --col-week-bg: 270 20% 16%;
+    --col-week-accent: 271 81% 70%;
+    --col-backlog-bg: 220 13% 13%;
+    --col-backlog-accent: 220 9% 64%;
+    --col-done-bg: 142 20% 13%;
+    --col-done-accent: 142 71% 56%;
+
+    --prio-low: 220 9% 55%;
+    --prio-med: 199 80% 58%;
+    --prio-high: 38 92% 58%;
+    --prio-urgent: 0 84% 64%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family:
+      'Inter', 'PingFang TC', 'Microsoft YaHei', ui-sans-serif, system-ui, -apple-system,
+      'Segoe UI', sans-serif;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    letter-spacing: -0.003em;
+  }
+
+  /* Custom scrollbars for a cleaner look */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  .shadow-card {
+    box-shadow: 0 1px 2px hsl(220 13% 20% / 0.04), 0 1px 4px hsl(220 13% 20% / 0.04);
+  }
+  .shadow-card-hover {
+    box-shadow: 0 4px 14px hsl(220 13% 20% / 0.08), 0 2px 4px hsl(220 13% 20% / 0.06);
+  }
+  .dark .shadow-card {
+    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.3);
+  }
+  .dark .shadow-card-hover {
+    box-shadow: 0 6px 20px hsl(0 0% 0% / 0.35);
+  }
+}

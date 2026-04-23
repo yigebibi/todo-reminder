@@ -6,17 +6,29 @@
 
 ## [Unreleased]
 
+### Planned
+- 子任務 UI、標籤 UI
+- 多提醒（目前一任務只能綁一個主提醒）
+- 通知 action buttons（「完成」「稍後提醒」直接從 toast 觸發）
+- 全域系統快捷鍵（跨 app 喚起快速新增迷你視窗）
+- 睡眠喚醒後補發錯過提醒的壓測
+
+---
+
+## [0.2.0] — 2026-04-23
+
+M5 polish 收尾發佈。UI 手感、錯誤處理、可發現性都有顯著提升，日常使用比 0.1.0 明顯順手。
+
 ### Added
 - Toast 通知系統（info / success / error 三類，右下角堆疊、自動消失、可手動關）
 - React ErrorBoundary 兜底 UI 崩潰（friendly fallback + 重試 / 重載按鈕）
 - 看板頂部搜尋框：即時過濾任務標題 / 備註，無結果時顯示空態
 - 全域鍵盤快捷鍵：`Ctrl+N` 開進階新增、`Ctrl+F` 聚焦搜尋（typing-aware，不搶焦點）
 - 零任務 onboarding：置中歡迎畫面取代 4 個空欄
-- 任務 CRUD 失敗會透過 toast 浮現
+- 任務 CRUD 失敗會透過 toast 浮現，不只打 console
 
-### Planned
-- v0.2：子任務 UI、標籤 UI、多提醒、通知 action buttons、全域系統快捷鍵（跨 app 的，不只 app 內）
-- 睡眠喚醒後補發錯過的提醒壓測
+### Changed
+- 以 `CustomEvent` 解耦快捷鍵和 Dialog 狀態，避免為此多開一個全域 store
 
 ---
 

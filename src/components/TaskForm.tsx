@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Trash2, Bell, BellOff } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Trash2, Bell, BellOff, CalendarClock, Flag } from 'lucide-react';
 import * as chrono from 'chrono-node';
 import { Dialog } from './ui/Dialog';
 import { Input } from './ui/Input';
@@ -24,6 +24,7 @@ export interface TaskFormValues {
   title: string;
   description: string | null;
   priority: Priority;
+  start_at: number | null;
   due_at: number | null;
   reminder_offset: number | null; // minutes before due_at; null = no reminder
 }
@@ -63,6 +64,7 @@ export function TaskForm({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>(PRIORITY.MED);
+  const [startLocal, setStartLocal] = useState('');
   const [dueLocal, setDueLocal] = useState('');
   const [reminder, setReminder] = useState<ReminderOffset>('none');
   const [submitting, setSubmitting] = useState(false);
@@ -73,6 +75,7 @@ export function TaskForm({
       setTitle(task?.title ?? '');
       setDescription(task?.description ?? '');
       setPriority((task?.priority as Priority) ?? PRIORITY.MED);
+      setStartLocal(toLocalInput(task?.start_at ?? null));
       setDueLocal(toLocalInput(task?.due_at ?? null));
       const initReminder = initialReminderOffset;
       if (initReminder != null && REMINDER_PRESETS.some((p) => p.value === initReminder)) {
@@ -84,25 +87,36 @@ export function TaskForm({
     }
   }, [open, task, initialReminderOffset]);
 
+  // Autofill due_at from natural-language in the title, when both start/due
+  // are still empty and user is creating a fresh task (not editing).
   useEffect(() => {
-    if (dueLocal || !title) return;
+    if (dueLocal || startLocal || !title || isEdit) return;
     const parsed = chrono.parseDate(title, new Date(), { forwardDate: true });
     if (parsed) {
       setDueLocal(toLocalInput(toUnix(parsed)));
     }
-  }, [title, dueLocal]);
+  }, [title, dueLocal, startLocal, isEdit]);
 
   const hasDueAt = !!dueLocal;
+  const rangeInvalid = useMemo(() => {
+    if (!startLocal || !dueLocal) return false;
+    const s = parseLocalInput(startLocal);
+    const d = parseLocalInput(dueLocal);
+    return s != null && d != null && s > d;
+  }, [startLocal, dueLocal]);
+
+  const canSubmit = !submitting && title.trim().length > 0 && !rangeInvalid;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     try {
       await onSubmit({
         title: title.trim(),
         description: description.trim() || null,
         priority,
+        start_at: parseLocalInput(startLocal),
         due_at: parseLocalInput(dueLocal),
         reminder_offset:
           hasDueAt && reminder !== 'none' ? (reminder as number) : null,
@@ -125,49 +139,83 @@ export function TaskForm({
       onOpenChange={onOpenChange}
       title={isEdit ? '編輯任務' : '新增任務'}
       description="標題輸入「明天下午 3 點」等會自動識別時間"
+      className="max-w-xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium" htmlFor="task-title">
-            標題 <span className="text-destructive">*</span>
-          </label>
-          <Input
-            id="task-title"
-            autoFocus
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="例：明天下午 3 點和 John 開會"
-            required
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium" htmlFor="task-desc">
-            備註
-          </label>
-          <Textarea
-            id="task-desc"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="補充細節（選填）"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* --- Basic --- */}
+        <div className="space-y-3">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="task-due">
-              截止時間
+            <label className="text-sm font-medium" htmlFor="task-title">
+              標題 <span className="text-destructive">*</span>
             </label>
             <Input
-              id="task-due"
-              type="datetime-local"
-              value={dueLocal}
-              onChange={(e) => setDueLocal(e.target.value)}
+              id="task-title"
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="例：明天下午 3 點和 John 開會"
+              required
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="task-priority">
+            <label className="text-sm font-medium" htmlFor="task-desc">
+              備註
+            </label>
+            <Textarea
+              id="task-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="補充細節（選填）"
+            />
+          </div>
+        </div>
+
+        {/* --- Schedule --- */}
+        <section className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3.5">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <CalendarClock className="h-4 w-4 text-muted-foreground" strokeWidth={2.2} />
+            排程
+            <span className="ml-auto text-[11px] font-normal text-muted-foreground">
+              開始、截止皆可留空
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[12px] text-muted-foreground" htmlFor="task-start">
+                開始時間
+              </label>
+              <Input
+                id="task-start"
+                type="datetime-local"
+                value={startLocal}
+                onChange={(e) => setStartLocal(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[12px] text-muted-foreground" htmlFor="task-due">
+                截止時間
+              </label>
+              <Input
+                id="task-due"
+                type="datetime-local"
+                value={dueLocal}
+                onChange={(e) => setDueLocal(e.target.value)}
+                className={cn(rangeInvalid && 'border-destructive focus-visible:ring-destructive')}
+              />
+            </div>
+          </div>
+
+          {rangeInvalid && (
+            <p className="text-[12px] text-destructive">
+              截止時間不能早於開始時間。
+            </p>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-[12px] text-muted-foreground" htmlFor="task-priority">
+              <Flag className="mr-1 inline h-3 w-3" strokeWidth={2.2} />
               優先級
             </label>
             <Select
@@ -182,11 +230,12 @@ export function TaskForm({
               ))}
             </Select>
           </div>
-        </div>
+        </section>
 
-        <div
+        {/* --- Reminder --- */}
+        <section
           className={cn(
-            'rounded-lg border border-border/70 bg-muted/40 p-3 space-y-2',
+            'space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3.5',
             !hasDueAt && 'opacity-60'
           )}
         >
@@ -198,8 +247,8 @@ export function TaskForm({
             )}
             提醒
             {!hasDueAt && (
-              <span className="ml-1 text-[11px] font-normal text-muted-foreground">
-                （需先設定截止時間）
+              <span className="ml-auto text-[11px] font-normal text-muted-foreground">
+                需先設定截止時間
               </span>
             )}
           </div>
@@ -217,8 +266,9 @@ export function TaskForm({
               </option>
             ))}
           </Select>
-        </div>
+        </section>
 
+        {/* --- Actions --- */}
         {confirmingDelete ? (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2.5">
             <div className="flex items-center gap-2 text-sm text-destructive">
@@ -245,7 +295,7 @@ export function TaskForm({
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-1">
             {isEdit && onDelete ? (
               <Button
                 type="button"
@@ -262,7 +312,7 @@ export function TaskForm({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 取消
               </Button>
-              <Button type="submit" disabled={submitting || !title.trim()}>
+              <Button type="submit" disabled={!canSubmit}>
                 {submitting ? '保存中…' : isEdit ? '保存' : '新增'}
               </Button>
             </div>

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Task, TaskCreateInput, TaskUpdateInput } from '../types/models';
 import * as api from '../api/tasks';
 import * as remindersApi from '../api/reminders';
-import { isThisWeek, isToday, recentDays } from '../lib/datetime';
+import { recentDays, taskCoversThisWeek, taskCoversToday } from '../lib/datetime';
 
 interface ReminderInfo {
   remindAt: number;
@@ -130,26 +130,30 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 }));
 
 // ---- Selectors for Kanban columns ----
+// A task now has an optional (start_at, due_at) window. Buckets reflect whether
+// the task's window overlaps each time range; "today" wins over "week", "week"
+// wins over "backlog", so a task spanning multi-days shows up in the earliest
+// relevant column only.
+
+const isOpen = (t: Task) => t.status !== 'done' && t.status !== 'cancelled';
 
 export const selectToday = (s: TaskStore) =>
-  s.tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled' && isToday(t.due_at));
+  s.tasks.filter((t) => isOpen(t) && taskCoversToday(t.start_at, t.due_at));
 
 export const selectThisWeek = (s: TaskStore) =>
   s.tasks.filter(
     (t) =>
-      t.status !== 'done' &&
-      t.status !== 'cancelled' &&
-      !isToday(t.due_at) &&
-      isThisWeek(t.due_at)
+      isOpen(t) &&
+      !taskCoversToday(t.start_at, t.due_at) &&
+      taskCoversThisWeek(t.start_at, t.due_at)
   );
 
 export const selectBacklog = (s: TaskStore) =>
   s.tasks.filter(
     (t) =>
-      t.status !== 'done' &&
-      t.status !== 'cancelled' &&
-      !isToday(t.due_at) &&
-      !isThisWeek(t.due_at)
+      isOpen(t) &&
+      !taskCoversToday(t.start_at, t.due_at) &&
+      !taskCoversThisWeek(t.start_at, t.due_at)
   );
 
 export const selectDone7d = (s: TaskStore) => {

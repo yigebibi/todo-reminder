@@ -31,12 +31,20 @@ fn greet(name: &str) -> String {
 pub fn run() {
     set_aumid();
 
-    let migrations = vec![Migration {
-        version: 1,
-        description: "init schema: tasks / subtasks / tags / reminders / activity_log / settings",
-        sql: include_str!("../migrations/001_init.sql"),
-        kind: MigrationKind::Up,
-    }];
+    let migrations = vec![
+        Migration {
+            version: 1,
+            description: "init schema: tasks / subtasks / tags / reminders / activity_log / settings",
+            sql: include_str!("../migrations/001_init.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "add tasks.start_at for time-range tasks",
+            sql: include_str!("../migrations/002_add_task_start_at.sql"),
+            kind: MigrationKind::Up,
+        },
+    ];
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {

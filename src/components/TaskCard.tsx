@@ -1,7 +1,7 @@
-import { Clock, Flame, Bell } from 'lucide-react';
+import { Clock, Flame, Bell, CalendarRange } from 'lucide-react';
 import { Checkbox } from './ui/Checkbox';
 import { cn } from '../lib/utils';
-import { formatDue } from '../lib/datetime';
+import { formatSchedule } from '../lib/datetime';
 import { PRIORITY_LABEL, type Task } from '../types/models';
 
 interface TaskCardProps {
@@ -21,6 +21,8 @@ const priorityDotClass: Record<number, string> = {
 export function TaskCard({ task, hasReminder, onToggleDone, onOpen }: TaskCardProps) {
   const done = task.status === 'done';
   const isOverdue = !done && task.due_at != null && task.due_at * 1000 < Date.now();
+  const hasRange = task.start_at != null && task.due_at != null;
+  const scheduleLabel = formatSchedule(task.start_at, task.due_at);
 
   return (
     <div
@@ -75,7 +77,7 @@ export function TaskCard({ task, hasReminder, onToggleDone, onOpen }: TaskCardPr
         )}
 
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-          {task.due_at != null && (
+          {scheduleLabel && (
             <span
               className={cn(
                 'inline-flex items-center gap-1 rounded px-1.5 py-0.5',
@@ -84,8 +86,12 @@ export function TaskCard({ task, hasReminder, onToggleDone, onOpen }: TaskCardPr
                   : 'bg-muted text-muted-foreground'
               )}
             >
-              <Clock className="h-3 w-3" strokeWidth={2.2} />
-              {formatDue(task.due_at)}
+              {hasRange ? (
+                <CalendarRange className="h-3 w-3" strokeWidth={2.2} />
+              ) : (
+                <Clock className="h-3 w-3" strokeWidth={2.2} />
+              )}
+              {scheduleLabel}
             </span>
           )}
           {task.priority !== 1 && task.priority !== 3 && (

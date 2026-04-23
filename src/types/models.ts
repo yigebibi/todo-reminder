@@ -25,6 +25,7 @@ export interface Task {
   description: string | null;
   status: TaskStatus;
   priority: Priority;
+  start_at: number | null;
   due_at: number | null;
   completed_at: number | null;
   created_at: number;
@@ -35,6 +36,7 @@ export interface TaskCreateInput {
   title: string;
   description?: string | null;
   priority?: Priority;
+  start_at?: number | null;
   due_at?: number | null;
 }
 
@@ -43,6 +45,7 @@ export interface TaskUpdateInput {
   description?: string | null;
   status?: TaskStatus;
   priority?: Priority;
+  start_at?: number | null;
   due_at?: number | null;
 }
 

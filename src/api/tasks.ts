@@ -19,12 +19,13 @@ export async function getTask(id: number): Promise<Task | null> {
 export async function createTask(input: TaskCreateInput): Promise<Task> {
   const now = nowSec();
   const res = await exec(
-    `INSERT INTO tasks (title, description, status, priority, due_at, created_at, updated_at)
-     VALUES (?, ?, 'todo', ?, ?, ?, ?)`,
+    `INSERT INTO tasks (title, description, status, priority, start_at, due_at, created_at, updated_at)
+     VALUES (?, ?, 'todo', ?, ?, ?, ?, ?)`,
     [
       input.title.trim(),
       input.description ?? null,
       input.priority ?? 1,
+      input.start_at ?? null,
       input.due_at ?? null,
       now,
       now,
@@ -60,6 +61,10 @@ export async function updateTask(id: number, patch: TaskUpdateInput): Promise<Ta
   if (patch.priority !== undefined) {
     fields.push('priority = ?');
     params.push(patch.priority);
+  }
+  if (patch.start_at !== undefined) {
+    fields.push('start_at = ?');
+    params.push(patch.start_at);
   }
   if (patch.due_at !== undefined) {
     fields.push('due_at = ?');

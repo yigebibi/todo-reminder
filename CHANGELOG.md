@@ -6,9 +6,17 @@
 
 ## [Unreleased]
 
+### Added
+- Toast 通知系統（info / success / error 三類，右下角堆疊、自動消失、可手動關）
+- React ErrorBoundary 兜底 UI 崩潰（friendly fallback + 重試 / 重載按鈕）
+- 看板頂部搜尋框：即時過濾任務標題 / 備註，無結果時顯示空態
+- 全域鍵盤快捷鍵：`Ctrl+N` 開進階新增、`Ctrl+F` 聚焦搜尋（typing-aware，不搶焦點）
+- 零任務 onboarding：置中歡迎畫面取代 4 個空欄
+- 任務 CRUD 失敗會透過 toast 浮現
+
 ### Planned
-- M5：打包 MSI / NSIS 安裝器，驗證 release 版本 AUMID 能否由安裝器自動綁定
-- v0.2：子任務 UI、標籤 UI、多提醒、通知 action buttons、全域快捷鍵
+- v0.2：子任務 UI、標籤 UI、多提醒、通知 action buttons、全域系統快捷鍵（跨 app 的，不只 app 內）
+- 睡眠喚醒後補發錯過的提醒壓測
 
 ---
 

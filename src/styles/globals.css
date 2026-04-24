@@ -175,6 +175,15 @@
       linear-gradient(180deg, hsl(var(--muted) / 0.7), hsl(var(--muted) / 0.35));
   }
 
+  /* Hide scrollbar but keep scroll ability. */
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   /* --- CJK UI font for tiny labels (10-12px) ---
      Noto Sans TC looks great at body size but has no tight hinting for small
      sizes; switch to the OS CJK UI font (Microsoft JhengHei UI / PingFang TC),

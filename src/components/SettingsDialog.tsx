@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Moon, Sun, Info } from 'lucide-react';
+import { Moon, Sun, Info, Globe2 } from 'lucide-react';
 import { Dialog } from './ui/Dialog';
 import { Switch } from './ui/Switch';
-import { useSettingsStore, type Theme } from '../stores/settingsStore';
+import { Select } from './ui/Select';
+import { useSettingsStore, type Region, type Theme } from '../stores/settingsStore';
 import { getAutostartEnabled, setAutostartEnabled } from '../api/autostart';
+import { REGION_LABELS, detectDefaultRegion } from '../lib/lunar';
 import { cn } from '../lib/utils';
 
 interface SettingsDialogProps {
@@ -14,6 +16,8 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const region = useSettingsStore((s) => s.region);
+  const setRegion = useSettingsStore((s) => s.setRegion);
 
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
@@ -59,6 +63,28 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               label="暗色"
             />
           </div>
+        </section>
+
+        <section className="space-y-2 border-t border-border/50 pt-4">
+          <div className="flex items-center gap-2">
+            <Globe2 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2.2} />
+            <h3 className="text-sm font-semibold">月曆區域 / 節假日</h3>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            決定農曆旁顯示的節日內容。「跟隨系統」會依你作業系統的地區自動選（目前偵測為{' '}
+            <span className="font-medium text-foreground">{REGION_LABELS[detectDefaultRegion()]}</span>
+            ）。
+          </p>
+          <Select
+            value={region}
+            onChange={(e) => setRegion(e.target.value as Region)}
+          >
+            {(Object.keys(REGION_LABELS) as Region[]).map((r) => (
+              <option key={r} value={r}>
+                {REGION_LABELS[r]}
+              </option>
+            ))}
+          </Select>
         </section>
 
         <section className="flex items-start justify-between gap-4 border-t border-border/50 pt-4">

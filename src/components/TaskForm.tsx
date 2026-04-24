@@ -6,6 +6,7 @@ import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
+import { DateTimePicker } from './ui/DateTimePicker';
 import { fromUnix, toUnix } from '../lib/datetime';
 import { PRIORITY, PRIORITY_LABEL, type Priority, type Task } from '../types/models';
 import { cn } from '../lib/utils';
@@ -38,20 +39,6 @@ interface TaskFormProps {
   onDelete?: () => Promise<void> | void;
 }
 
-function toLocalInput(sec: number | null): string {
-  const d = fromUnix(sec);
-  if (!d) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function parseLocalInput(s: string): number | null {
-  if (!s) return null;
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return null;
-  return toUnix(d);
-}
-
 export function TaskForm({
   open,
   task,
@@ -64,8 +51,8 @@ export function TaskForm({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>(PRIORITY.MED);
-  const [startLocal, setStartLocal] = useState('');
-  const [dueLocal, setDueLocal] = useState('');
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [dueDate, setDueDate] = useState<Date | null>(null);
   const [reminder, setReminder] = useState<ReminderOffset>('none');
   const [submitting, setSubmitting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -75,8 +62,8 @@ export function TaskForm({
       setTitle(task?.title ?? '');
       setDescription(task?.description ?? '');
       setPriority((task?.priority as Priority) ?? PRIORITY.MED);
-      setStartLocal(toLocalInput(task?.start_at ?? null));
-      setDueLocal(toLocalInput(task?.due_at ?? null));
+      setStartDate(fromUnix(task?.start_at ?? null));
+      setDueDate(fromUnix(task?.due_at ?? null));
       const initReminder = initialReminderOffset;
       if (initReminder != null && REMINDER_PRESETS.some((p) => p.value === initReminder)) {
         setReminder(initReminder as ReminderOffset);
@@ -90,20 +77,16 @@ export function TaskForm({
   // Autofill due_at from natural-language in the title, when both start/due
   // are still empty and user is creating a fresh task (not editing).
   useEffect(() => {
-    if (dueLocal || startLocal || !title || isEdit) return;
+    if (dueDate || startDate || !title || isEdit) return;
     const parsed = chrono.parseDate(title, new Date(), { forwardDate: true });
-    if (parsed) {
-      setDueLocal(toLocalInput(toUnix(parsed)));
-    }
-  }, [title, dueLocal, startLocal, isEdit]);
+    if (parsed) setDueDate(parsed);
+  }, [title, dueDate, startDate, isEdit]);
 
-  const hasDueAt = !!dueLocal;
+  const hasDueAt = dueDate != null;
   const rangeInvalid = useMemo(() => {
-    if (!startLocal || !dueLocal) return false;
-    const s = parseLocalInput(startLocal);
-    const d = parseLocalInput(dueLocal);
-    return s != null && d != null && s > d;
-  }, [startLocal, dueLocal]);
+    if (!startDate || !dueDate) return false;
+    return startDate.getTime() > dueDate.getTime();
+  }, [startDate, dueDate]);
 
   const canSubmit = !submitting && title.trim().length > 0 && !rangeInvalid;
 
@@ -116,8 +99,8 @@ export function TaskForm({
         title: title.trim(),
         description: description.trim() || null,
         priority,
-        start_at: parseLocalInput(startLocal),
-        due_at: parseLocalInput(dueLocal),
+        start_at: startDate ? toUnix(startDate) : null,
+        due_at: dueDate ? toUnix(dueDate) : null,
         reminder_offset:
           hasDueAt && reminder !== 'none' ? (reminder as number) : null,
       });
@@ -186,23 +169,21 @@ export function TaskForm({
               <label className="text-[12px] text-muted-foreground" htmlFor="task-start">
                 開始時間
               </label>
-              <Input
+              <DateTimePicker
                 id="task-start"
-                type="datetime-local"
-                value={startLocal}
-                onChange={(e) => setStartLocal(e.target.value)}
+                value={startDate}
+                onChange={setStartDate}
               />
             </div>
             <div className="space-y-1">
               <label className="text-[12px] text-muted-foreground" htmlFor="task-due">
                 截止時間
               </label>
-              <Input
+              <DateTimePicker
                 id="task-due"
-                type="datetime-local"
-                value={dueLocal}
-                onChange={(e) => setDueLocal(e.target.value)}
-                className={cn(rangeInvalid && 'border-destructive focus-visible:ring-destructive')}
+                value={dueDate}
+                onChange={setDueDate}
+                invalid={rangeInvalid}
               />
             </div>
           </div>

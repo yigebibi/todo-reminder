@@ -4,74 +4,85 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 224 71% 4%;
+    --background: 220 20% 98.5%;
+    --foreground: 224 40% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 224 71% 4%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 210 40% 98%;
+    --card-foreground: 224 40% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 40% 10%;
+    --primary: 231 74% 58%;
+    --primary-foreground: 210 40% 99%;
     --secondary: 220 14% 96%;
     --secondary-foreground: 220 9% 46%;
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
     --accent: 220 14% 93%;
-    --accent-foreground: 224 71% 4%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 60%;
-    --radius: 0.6rem;
+    --accent-foreground: 224 40% 10%;
+    --destructive: 0 76% 55%;
+    --destructive-foreground: 210 40% 99%;
+    --border: 220 13% 90%;
+    --input: 220 13% 88%;
+    --ring: 231 74% 58%;
+    --radius: 0.65rem;
 
-    /* Column accents (pastel) */
-    --col-today-bg: 214 95% 97%;
-    --col-today-accent: 217 91% 60%;
-    --col-week-bg: 270 95% 97%;
-    --col-week-accent: 271 81% 56%;
-    --col-backlog-bg: 220 14% 96%;
+    /* Column accents (pastel, refined) */
+    --col-today-bg: 220 95% 97.5%;
+    --col-today-accent: 231 74% 58%;
+    --col-week-bg: 268 85% 97.5%;
+    --col-week-accent: 268 70% 58%;
+    --col-backlog-bg: 220 20% 97%;
     --col-backlog-accent: 220 9% 46%;
-    --col-done-bg: 142 69% 96%;
-    --col-done-accent: 142 71% 45%;
+    --col-done-bg: 150 65% 96.5%;
+    --col-done-accent: 150 65% 40%;
 
     /* Priority dots */
-    --prio-low: 220 9% 64%;
-    --prio-med: 199 89% 48%;
-    --prio-high: 38 92% 50%;
-    --prio-urgent: 0 84% 60%;
+    --prio-low: 220 9% 60%;
+    --prio-med: 199 80% 48%;
+    --prio-high: 35 92% 50%;
+    --prio-urgent: 0 76% 55%;
+
+    /* Subtle app-shell gradient accents */
+    --surface-tint-1: 231 74% 58% / 0.04;
+    --surface-tint-2: 268 70% 60% / 0.03;
   }
 
   .dark {
-    --background: 224 15% 9%;
-    --foreground: 220 14% 92%;
-    --card: 224 15% 11%;
-    --card-foreground: 220 14% 92%;
-    --primary: 217 91% 64%;
-    --primary-foreground: 224 71% 4%;
+    --background: 225 18% 8%;
+    --foreground: 220 14% 94%;
+    --card: 225 16% 11%;
+    --card-foreground: 220 14% 94%;
+    --popover: 225 16% 12%;
+    --popover-foreground: 220 14% 94%;
+    --primary: 231 85% 70%;
+    --primary-foreground: 225 30% 8%;
     --secondary: 220 13% 16%;
-    --secondary-foreground: 220 14% 82%;
-    --muted: 220 13% 14%;
-    --muted-foreground: 220 9% 60%;
-    --accent: 220 13% 18%;
-    --accent-foreground: 220 14% 92%;
-    --destructive: 0 63% 48%;
+    --secondary-foreground: 220 14% 84%;
+    --muted: 220 13% 15%;
+    --muted-foreground: 220 9% 62%;
+    --accent: 220 13% 19%;
+    --accent-foreground: 220 14% 94%;
+    --destructive: 0 68% 54%;
     --destructive-foreground: 220 14% 96%;
-    --border: 220 13% 18%;
-    --input: 220 13% 18%;
-    --ring: 217 91% 64%;
+    --border: 220 13% 19%;
+    --input: 220 13% 22%;
+    --ring: 231 85% 70%;
 
-    --col-today-bg: 217 30% 15%;
-    --col-today-accent: 217 91% 68%;
-    --col-week-bg: 270 20% 16%;
-    --col-week-accent: 271 81% 70%;
+    --col-today-bg: 225 24% 13%;
+    --col-today-accent: 231 85% 74%;
+    --col-week-bg: 266 18% 14%;
+    --col-week-accent: 268 80% 75%;
     --col-backlog-bg: 220 13% 13%;
-    --col-backlog-accent: 220 9% 64%;
-    --col-done-bg: 142 20% 13%;
-    --col-done-accent: 142 71% 56%;
+    --col-backlog-accent: 220 9% 65%;
+    --col-done-bg: 150 14% 12%;
+    --col-done-accent: 150 60% 60%;
 
-    --prio-low: 220 9% 55%;
-    --prio-med: 199 80% 58%;
-    --prio-high: 38 92% 58%;
-    --prio-urgent: 0 84% 64%;
+    --prio-low: 220 9% 58%;
+    --prio-med: 199 70% 60%;
+    --prio-high: 35 92% 60%;
+    --prio-urgent: 0 76% 62%;
+
+    --surface-tint-1: 231 85% 70% / 0.07;
+    --surface-tint-2: 268 80% 70% / 0.05;
   }
 
   * {
@@ -86,11 +97,27 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 15% 0%, hsl(var(--surface-tint-1)), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 100% 100%, hsl(var(--surface-tint-2)), transparent 55%);
     font-family:
-      'Inter', 'PingFang TC', 'Microsoft YaHei', ui-sans-serif, system-ui, -apple-system,
-      'Segoe UI', sans-serif;
-    font-feature-settings: 'cv11', 'ss01', 'ss03';
-    letter-spacing: -0.003em;
+      'Inter Variable', 'Inter',
+      'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei UI', 'Microsoft JhengHei',
+      'Microsoft YaHei UI', 'Microsoft YaHei',
+      ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-feature-settings: 'cv11', 'ss01', 'ss03', 'cv02';
+    letter-spacing: -0.006em;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .font-mono,
+  [class*='font-mono'] {
+    font-family:
+      'JetBrains Mono Variable', 'JetBrains Mono', 'Fira Code', ui-monospace, 'SF Mono',
+      Menlo, Consolas, monospace;
+    font-feature-settings: 'calt', 'liga';
   }
 
   /* Custom scrollbars for a cleaner look */
@@ -112,15 +139,120 @@
 
 @layer utilities {
   .shadow-card {
-    box-shadow: 0 1px 2px hsl(220 13% 20% / 0.04), 0 1px 4px hsl(220 13% 20% / 0.04);
+    box-shadow:
+      0 1px 1px hsl(220 13% 20% / 0.04),
+      0 1px 3px hsl(220 13% 20% / 0.05);
   }
   .shadow-card-hover {
-    box-shadow: 0 4px 14px hsl(220 13% 20% / 0.08), 0 2px 4px hsl(220 13% 20% / 0.06);
+    box-shadow:
+      0 2px 4px hsl(220 13% 20% / 0.06),
+      0 12px 24px -8px hsl(220 13% 20% / 0.12);
+  }
+  .shadow-float {
+    box-shadow:
+      0 1px 2px hsl(220 13% 20% / 0.04),
+      0 8px 20px -4px hsl(220 13% 20% / 0.1),
+      0 16px 40px -12px hsl(220 13% 20% / 0.12);
   }
   .dark .shadow-card {
-    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.3);
+    box-shadow:
+      0 1px 2px hsl(0 0% 0% / 0.32),
+      0 2px 6px hsl(0 0% 0% / 0.26);
   }
   .dark .shadow-card-hover {
-    box-shadow: 0 6px 20px hsl(0 0% 0% / 0.35);
+    box-shadow:
+      0 4px 14px hsl(0 0% 0% / 0.38),
+      0 14px 30px -10px hsl(0 0% 0% / 0.42);
   }
+  .dark .shadow-float {
+    box-shadow:
+      0 2px 6px hsl(0 0% 0% / 0.42),
+      0 18px 40px -12px hsl(0 0% 0% / 0.58);
+  }
+
+  .bg-surface-muted {
+    background:
+      linear-gradient(180deg, hsl(var(--muted) / 0.7), hsl(var(--muted) / 0.35));
+  }
+
+  /* --- CJK UI font for tiny labels (10-12px) ---
+     Noto Sans TC looks great at body size but has no tight hinting for small
+     sizes; switch to the OS CJK UI font (Microsoft JhengHei UI / PingFang TC),
+     which is hand-hinted for pixel-perfect small text. Also switch back to
+     subpixel AA so LCD rendering can sharpen horizontal strokes. */
+  .font-cjk-ui {
+    font-family:
+      'PingFang TC', 'PingFang SC',
+      'Microsoft JhengHei UI', 'Microsoft JhengHei',
+      'Microsoft YaHei UI', 'Microsoft YaHei',
+      'Noto Sans TC', 'Noto Sans SC',
+      ui-sans-serif, system-ui, sans-serif !important;
+    font-feature-settings: normal !important;
+    font-variant: normal !important;
+    letter-spacing: 0 !important;
+    -webkit-font-smoothing: subpixel-antialiased;
+    -moz-osx-font-smoothing: auto;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* --- react-day-picker theming --- */
+.rdp-tight {
+  --rdp-day-size: 30px;
+  --rdp-day_button-height: 30px;
+  --rdp-day_button-width: 30px;
+  --rdp-accent-color: hsl(var(--primary));
+  --rdp-accent-background-color: hsl(var(--primary) / 0.12);
+  --rdp-today-color: hsl(var(--primary));
+  --rdp-outside-opacity: 0.4;
+  margin: 0;
+  font-size: 12px;
+}
+.rdp-tight .rdp-month_caption {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 0 0 4px;
+  color: hsl(var(--foreground));
+}
+.rdp-tight .rdp-weekdays {
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+.rdp-tight .rdp-weekday {
+  padding: 3px 0;
+}
+.rdp-tight .rdp-day {
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: hsl(var(--foreground));
+  transition: background-color 100ms ease;
+}
+.rdp-tight .rdp-day_button {
+  border-radius: 6px;
+}
+.rdp-tight .rdp-day:hover:not([aria-selected='true']):not(.rdp-disabled) {
+  background: hsl(var(--accent));
+}
+.rdp-tight .rdp-today:not([aria-selected='true']) .rdp-day_button {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+.rdp-tight .rdp-selected .rdp-day_button {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 600;
+}
+.rdp-tight .rdp-outside .rdp-day_button {
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+.rdp-tight .rdp-nav button {
+  color: hsl(var(--muted-foreground));
+  width: 24px;
+  height: 24px;
+}
+.rdp-tight .rdp-nav button:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent));
+  border-radius: 6px;
 }

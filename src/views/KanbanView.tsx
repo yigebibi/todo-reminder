@@ -8,12 +8,15 @@ import {
   CheckCheck,
   Search,
   X,
+  Columns3,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
 import * as chrono from 'chrono-node';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { TaskCard } from '../components/TaskCard';
 import { TaskForm, type TaskFormValues } from '../components/TaskForm';
+import { CalendarMonth } from '../components/CalendarMonth';
 import {
   selectBacklog,
   selectDone7d,
@@ -28,6 +31,7 @@ import type { Task } from '../types/models';
 import { cn } from '../lib/utils';
 
 type ColumnKey = 'today' | 'week' | 'backlog' | 'done';
+type ViewMode = 'kanban' | 'calendar';
 
 import type { LucideIcon } from 'lucide-react';
 
@@ -99,6 +103,7 @@ export function KanbanView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editing, setEditing] = useState<Task | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -126,6 +131,12 @@ export function KanbanView() {
     };
   }, []);
 
+  const filteredTasks = useMemo(() => {
+    const q = searchQuery.trim();
+    if (!q) return tasks;
+    return tasks.filter((t) => matchesQuery(t, q));
+  }, [tasks, searchQuery]);
+
   const columns = useMemo(() => {
     const state = useTaskStore.getState();
     const buckets = {
@@ -134,8 +145,8 @@ export function KanbanView() {
       backlog: selectBacklog(state),
       done: selectDone7d(state),
     };
-    if (!searchQuery.trim()) return buckets;
     const q = searchQuery.trim();
+    if (!q) return buckets;
     return {
       today: buckets.today.filter((t) => matchesQuery(t, q)),
       week: buckets.week.filter((t) => matchesQuery(t, q)),
@@ -210,10 +221,48 @@ export function KanbanView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border/60 px-6 py-3 space-y-2">
+      <div className="border-b border-border/60 bg-background/70 px-6 py-3 space-y-2.5 backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="inline-flex rounded-lg border border-border/60 bg-card p-0.5 shadow-card">
+            <ViewTab
+              active={viewMode === 'kanban'}
+              onClick={() => setViewMode('kanban')}
+              icon={<Columns3 className="h-3.5 w-3.5" />}
+              label="看板"
+            />
+            <ViewTab
+              active={viewMode === 'calendar'}
+              onClick={() => setViewMode('calendar')}
+              icon={<CalendarIcon className="h-3.5 w-3.5" />}
+              label="月曆"
+            />
+          </div>
+
+          <div className="relative flex-1 max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={searchInputRef}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜尋 ⌃F"
+              className="pl-9 pr-8"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="清除搜尋"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
         <form onSubmit={handleQuickAdd} className="flex gap-2">
           <div className="relative flex-1">
-            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary/70" />
             <Input
               value={quickTitle}
               onChange={(e) => setQuickTitle(e.target.value)}
@@ -229,45 +278,36 @@ export function KanbanView() {
             進階
           </Button>
         </form>
-
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            ref={searchInputRef}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜尋任務標題或備註…（Ctrl+F）"
-            className="pl-9 pr-8"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              aria-label="清除搜尋"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
       </div>
 
       {showOnboarding ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <Sparkles className="h-6 w-6 text-primary" strokeWidth={2.2} />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-base font-semibold">歡迎使用 Todo Reminder</h2>
-            <p className="max-w-md text-[13px] text-muted-foreground">
-              在上方輸入任務，試試自然語言──「明天下午 3 點交週報」會自動幫你設截止時間。
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-[11px] text-muted-foreground">
-            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono">Ctrl</kbd>
-            <span>+</span>
-            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono">N</kbd>
-            <span className="ml-1">開啟進階表單</span>
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border/60 bg-card p-8 text-center shadow-float">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 -top-20 h-40 opacity-70"
+              style={{
+                background:
+                  'radial-gradient(60% 60% at 50% 50%, hsl(var(--primary) / 0.22), transparent 70%)',
+              }}
+            />
+            <div className="relative flex flex-col items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/25 to-primary/5 ring-1 ring-primary/20">
+                <Sparkles className="h-6 w-6 text-primary" strokeWidth={2.2} />
+              </div>
+              <div className="space-y-1.5">
+                <h2 className="text-lg font-semibold tracking-tight">歡迎使用 Todo Reminder</h2>
+                <p className="mx-auto max-w-sm text-[13px] leading-relaxed text-muted-foreground">
+                  在上方輸入任務，試試自然語言──「明天下午 3 點交週報」會自動幫你設截止時間。
+                </p>
+              </div>
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono shadow-card">Ctrl</kbd>
+                <span>+</span>
+                <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono shadow-card">N</kbd>
+                <span className="ml-1">開啟進階表單</span>
+              </div>
+            </div>
           </div>
         </div>
       ) : showNoResults ? (
@@ -282,6 +322,12 @@ export function KanbanView() {
             清除搜尋
           </Button>
         </div>
+      ) : viewMode === 'calendar' ? (
+        <CalendarMonth
+          tasks={filteredTasks}
+          reminderMap={reminderMap}
+          onOpenTask={openEdit}
+        />
       ) : (
         <div className="grid flex-1 grid-cols-4 gap-4 overflow-hidden px-6 py-5">
           {COLUMNS.map((col) => {
@@ -359,5 +405,34 @@ export function KanbanView() {
         onDelete={editing ? handleFormDelete : undefined}
       />
     </div>
+  );
+}
+
+function ViewTab({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all',
+        active
+          ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
+          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }

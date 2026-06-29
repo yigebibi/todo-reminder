@@ -93,8 +93,8 @@ export function KanbanView() {
   const complete = useTaskStore((s) => s.complete);
   const uncomplete = useTaskStore((s) => s.uncomplete);
   const remove = useTaskStore((s) => s.remove);
-  const setReminder = useTaskStore((s) => s.setReminder);
-  const clearReminder = useTaskStore((s) => s.clearReminder);
+  const syncReminders = useTaskStore((s) => s.syncReminders);
+  const clearReminders = useTaskStore((s) => s.clearReminders);
   const refreshSubtaskCounts = useTaskStore((s) => s.refreshSubtaskCounts);
   const refreshTaskTags = useTaskStore((s) => s.refreshTaskTags);
 
@@ -159,7 +159,7 @@ export function KanbanView() {
 
   async function handleFormSubmit(values: TaskFormValues) {
     try {
-      const { reminder_offset, subtask_titles, tag_ids, ...taskInput } = values;
+      const { reminder_offsets, subtask_titles, tag_ids, ...taskInput } = values;
       let taskId: number;
       if (editing) {
         const updated = await patch(editing.id, taskInput);
@@ -180,10 +180,10 @@ export function KanbanView() {
           await refreshTaskTags(taskId);
         }
       }
-      if (values.due_at != null && reminder_offset != null) {
-        await setReminder(taskId, values.due_at, reminder_offset);
+      if (values.due_at != null && reminder_offsets.length > 0) {
+        await syncReminders(taskId, values.due_at, reminder_offsets);
       } else {
-        await clearReminder(taskId);
+        await clearReminders(taskId);
       }
       toast.success(editing ? '任務已更新' : '任務已新增');
     } catch (e) {
@@ -327,7 +327,6 @@ export function KanbanView() {
       <TaskForm
         open={formOpen}
         task={editing}
-        initialReminderOffset={editing ? reminderMap[editing.id]?.offsetMinutes ?? null : null}
         onOpenChange={setFormOpen}
         onSubmit={handleFormSubmit}
         onDelete={editing ? handleFormDelete : undefined}

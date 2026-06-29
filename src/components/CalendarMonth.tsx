@@ -44,7 +44,7 @@ function shortenLabel(raw: string): string {
 
 interface Props {
   tasks: Task[];
-  reminderMap?: Record<number, { remindAt: number } | undefined>;
+  reminderMap?: Record<number, unknown>;
   taskTagMap?: Record<number, Tag[] | undefined>;
   onOpenTask: (task: Task) => void;
 }
@@ -230,7 +230,7 @@ function UpcomingList({
 }: {
   tasks: Task[];
   onOpenTask: (t: Task) => void;
-  reminderMap?: Record<number, { remindAt: number } | undefined>;
+  reminderMap?: Record<number, unknown>;
 }) {
   const today = new Date();
   const forecast = useWeatherStore((s) => s.forecast);

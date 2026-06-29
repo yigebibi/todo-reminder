@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trash2, Bell, BellOff, CalendarClock, Flag } from 'lucide-react';
+import { Trash2, CalendarClock, Flag } from 'lucide-react';
 import * as chrono from 'chrono-node';
 import { Dialog } from './ui/Dialog';
 import { Input } from './ui/Input';
@@ -9,19 +9,10 @@ import { Select } from './ui/Select';
 import { DateTimePicker } from './ui/DateTimePicker';
 import { fromUnix, toUnix } from '../lib/datetime';
 import { PRIORITY, PRIORITY_LABEL, type Priority, type Task } from '../types/models';
-import { cn } from '../lib/utils';
 import { SubtaskList } from './SubtaskList';
 import { TagPicker } from './TagPicker';
-
-type ReminderOffset = 'none' | 5 | 15 | 60 | 1440;
-
-const REMINDER_PRESETS: { value: ReminderOffset; label: string }[] = [
-  { value: 'none', label: '不提醒' },
-  { value: 5, label: '提前 5 分鐘' },
-  { value: 15, label: '提前 15 分鐘' },
-  { value: 60, label: '提前 1 小時' },
-  { value: 1440, label: '提前 1 天' },
-];
+import { ReminderList } from './ReminderList';
+import * as remindersApi from '../api/reminders';
 
 export interface TaskFormValues {
   title: string;
@@ -29,7 +20,7 @@ export interface TaskFormValues {
   priority: Priority;
   start_at: number | null;
   due_at: number | null;
-  reminder_offset: number | null; // minutes before due_at; null = no reminder
+  reminder_offsets: number[];
   subtask_titles: string[];
   tag_ids: number[];
 }
@@ -37,7 +28,6 @@ export interface TaskFormValues {
 interface TaskFormProps {
   open: boolean;
   task?: Task | null;
-  initialReminderOffset?: number | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: TaskFormValues) => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
@@ -48,7 +38,6 @@ interface TaskFormProps {
 export function TaskForm({
   open,
   task,
-  initialReminderOffset,
   onOpenChange,
   onSubmit,
   onDelete,
@@ -61,7 +50,7 @@ export function TaskForm({
   const [priority, setPriority] = useState<Priority>(PRIORITY.MED);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
-  const [reminder, setReminder] = useState<ReminderOffset>('none');
+  const [reminderOffsets, setReminderOffsets] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [draftSubtaskTitles, setDraftSubtaskTitles] = useState<string[]>([]);
@@ -74,17 +63,15 @@ export function TaskForm({
       setPriority((task?.priority as Priority) ?? PRIORITY.MED);
       setStartDate(fromUnix(task?.start_at ?? null));
       setDueDate(fromUnix(task?.due_at ?? null));
-      const initReminder = initialReminderOffset;
-      if (initReminder != null && REMINDER_PRESETS.some((p) => p.value === initReminder)) {
-        setReminder(initReminder as ReminderOffset);
-      } else {
-        setReminder('none');
-      }
       setConfirmingDelete(false);
       setDraftSubtaskTitles([]);
       setDraftTagIds([]);
+      setReminderOffsets([]);
+      if (task?.id) {
+        void remindersApi.listPendingOffsets(task.id).then(setReminderOffsets);
+      }
     }
-  }, [open, task, initialReminderOffset]);
+  }, [open, task]);
 
   // Autofill due_at from natural-language in the title, when both start/due
   // are still empty and user is creating a fresh task (not editing).
@@ -113,8 +100,7 @@ export function TaskForm({
         priority,
         start_at: startDate ? toUnix(startDate) : null,
         due_at: dueDate ? toUnix(dueDate) : null,
-        reminder_offset:
-          hasDueAt && reminder !== 'none' ? (reminder as number) : null,
+        reminder_offsets: hasDueAt ? reminderOffsets : [],
         subtask_titles: isEdit ? [] : draftSubtaskTitles,
         tag_ids: isEdit ? [] : draftTagIds,
       });
@@ -241,41 +227,11 @@ export function TaskForm({
           </div>
         </section>
 
-        {/* --- Reminder --- */}
-        <section
-          className={cn(
-            'space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3.5',
-            !hasDueAt && 'opacity-60'
-          )}
-        >
-          <div className="flex items-center gap-2 text-sm font-medium">
-            {reminder === 'none' ? (
-              <BellOff className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Bell className="h-4 w-4 text-primary" />
-            )}
-            提醒
-            {!hasDueAt && (
-              <span className="ml-auto text-[11px] font-normal text-muted-foreground">
-                需先設定截止時間
-              </span>
-            )}
-          </div>
-          <Select
-            value={reminder}
-            disabled={!hasDueAt}
-            onChange={(e) => {
-              const v = e.target.value;
-              setReminder(v === 'none' ? 'none' : (Number(v) as ReminderOffset));
-            }}
-          >
-            {REMINDER_PRESETS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </Select>
-        </section>
+        <ReminderList
+          offsets={reminderOffsets}
+          onChange={setReminderOffsets}
+          disabled={!hasDueAt}
+        />
 
         {/* --- Actions --- */}
         {confirmingDelete ? (

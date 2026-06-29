@@ -11,9 +11,9 @@
 - 子任務 API：`listSubtaskCounts`、`moveSubtask`（上移 / 下移）
 - 標籤 UI：任務表單多選標籤、設定頁標籤管理（增刪改色）、看板卡片與月曆任務顯示彩色 chip / 色點
 - 標籤 API：`updateTagColor`、`listTaskTagsMap`
+- 多提醒：任務可設多條相對截止時間的提醒；修改截止時間後未觸發提醒自動重算
 
 ### Planned
-- 多提醒（目前一任務只能綁一個主提醒）
 - 通知 action buttons（「完成」「稍後提醒」直接從 toast 觸發）
 - 全域系統快捷鍵（跨 app 喚起快速新增迷你視窗）
 - 睡眠喚醒後補發錯過提醒的壓測

@@ -7,9 +7,7 @@ import * as tagsApi from '../api/tags';
 import { recentDays, taskCoversThisWeek, taskCoversToday } from '../lib/datetime';
 
 interface ReminderInfo {
-  remindAt: number;
-  offsetMinutes: number | null;
-  fired: boolean;
+  active: true;
 }
 
 export interface SubtaskProgress {
@@ -32,9 +30,9 @@ interface TaskStore {
   uncomplete: (id: number) => Promise<void>;
   remove: (id: number) => Promise<void>;
 
-  setReminder: (taskId: number, dueAt: number, offsetMinutes: number) => Promise<void>;
-  clearReminder: (taskId: number) => Promise<void>;
-  refreshReminder: (taskId: number) => Promise<void>;
+  syncReminders: (taskId: number, dueAt: number, offsets: number[]) => Promise<void>;
+  clearReminders: (taskId: number) => Promise<void>;
+  refreshReminders: (taskId: number) => Promise<void>;
   refreshSubtaskCounts: (taskId?: number) => Promise<void>;
   refreshTaskTags: (taskId?: number) => Promise<void>;
 }
@@ -57,14 +55,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       ]);
       const reminderMap: Record<number, ReminderInfo> = {};
       for (const task of tasks) {
-        const reminders = await remindersApi.listRemindersByTask(task.id);
-        const active = reminders.find((r) => r.fired === 0);
-        if (active) {
-          reminderMap[task.id] = {
-            remindAt: active.remind_at,
-            offsetMinutes: active.offset_minutes,
-            fired: false,
-          };
+        const hasActive = await remindersApi.hasActiveReminder(task.id);
+        if (hasActive) {
+          reminderMap[task.id] = { active: true };
         }
       }
       const subtaskCountMap: Record<number, SubtaskProgress> = {};
@@ -101,7 +94,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   uncomplete: async (id) => {
     const open = await api.uncompleteTask(id);
     set({ tasks: get().tasks.map((t) => (t.id === id ? open : t)) });
-    await get().refreshReminder(id);
+    await get().refreshReminders(id);
   },
 
   remove: async (id) => {
@@ -120,34 +113,29 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     });
   },
 
-  setReminder: async (taskId, dueAt, offsetMinutes) => {
-    const remindAt = dueAt - offsetMinutes * 60;
-    await remindersApi.upsertPrimaryReminder(taskId, remindAt, offsetMinutes);
-    set({
-      reminderMap: {
-        ...get().reminderMap,
-        [taskId]: { remindAt, offsetMinutes, fired: false },
-      },
-    });
+  syncReminders: async (taskId, dueAt, offsets) => {
+    await remindersApi.syncPendingReminders(taskId, dueAt, offsets);
+    const map = { ...get().reminderMap };
+    if (offsets.length > 0) {
+      map[taskId] = { active: true };
+    } else {
+      delete map[taskId];
+    }
+    set({ reminderMap: map });
   },
 
-  clearReminder: async (taskId) => {
-    await remindersApi.deleteRemindersForTask(taskId);
+  clearReminders: async (taskId) => {
+    await remindersApi.deletePendingRemindersForTask(taskId);
     const map = { ...get().reminderMap };
     delete map[taskId];
     set({ reminderMap: map });
   },
 
-  refreshReminder: async (taskId) => {
-    const reminders = await remindersApi.listRemindersByTask(taskId);
-    const active = reminders.find((r) => r.fired === 0);
+  refreshReminders: async (taskId) => {
+    const hasActive = await remindersApi.hasActiveReminder(taskId);
     const map = { ...get().reminderMap };
-    if (active) {
-      map[taskId] = {
-        remindAt: active.remind_at,
-        offsetMinutes: active.offset_minutes,
-        fired: false,
-      };
+    if (hasActive) {
+      map[taskId] = { active: true };
     } else {
       delete map[taskId];
     }

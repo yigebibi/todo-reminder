@@ -7,6 +7,7 @@ import { PRIORITY_LABEL, type Task } from '../types/models';
 interface TaskCardProps {
   task: Task;
   hasReminder?: boolean;
+  subtaskProgress?: { done: number; total: number };
   onToggleDone: () => void;
   onOpen: () => void;
 }
@@ -18,7 +19,7 @@ const priorityBarClass: Record<number, string> = {
   3: 'bg-[hsl(var(--prio-urgent))]',
 };
 
-export function TaskCard({ task, hasReminder, onToggleDone, onOpen }: TaskCardProps) {
+export function TaskCard({ task, hasReminder, subtaskProgress, onToggleDone, onOpen }: TaskCardProps) {
   const done = task.status === 'done';
   const isOverdue = !done && task.due_at != null && task.due_at * 1000 < Date.now();
   const hasRange = task.start_at != null && task.due_at != null;
@@ -85,6 +86,22 @@ export function TaskCard({ task, hasReminder, onToggleDone, onOpen }: TaskCardPr
           <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground line-clamp-2">
             {task.description}
           </p>
+        )}
+
+        {subtaskProgress && subtaskProgress.total > 0 && (
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary/80 transition-all"
+                style={{
+                  width: `${(subtaskProgress.done / subtaskProgress.total) * 100}%`,
+                }}
+              />
+            </div>
+            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+              {subtaskProgress.done}/{subtaskProgress.total}
+            </span>
+          </div>
         )}
 
         {(scheduleLabel || showPrioBadge) && (

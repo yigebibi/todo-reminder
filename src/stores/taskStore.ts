@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Task, TaskCreateInput, TaskUpdateInput } from '../types/models';
 import * as api from '../api/tasks';
 import * as remindersApi from '../api/reminders';
+import * as subtasksApi from '../api/subtasks';
 import { recentDays, taskCoversThisWeek, taskCoversToday } from '../lib/datetime';
 
 interface ReminderInfo {
@@ -10,9 +11,15 @@ interface ReminderInfo {
   fired: boolean;
 }
 
+export interface SubtaskProgress {
+  done: number;
+  total: number;
+}
+
 interface TaskStore {
   tasks: Task[];
   reminderMap: Record<number, ReminderInfo | undefined>;
+  subtaskCountMap: Record<number, SubtaskProgress | undefined>;
   loading: boolean;
   error: string | null;
 
@@ -26,19 +33,23 @@ interface TaskStore {
   setReminder: (taskId: number, dueAt: number, offsetMinutes: number) => Promise<void>;
   clearReminder: (taskId: number) => Promise<void>;
   refreshReminder: (taskId: number) => Promise<void>;
+  refreshSubtaskCounts: (taskId?: number) => Promise<void>;
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
   reminderMap: {},
+  subtaskCountMap: {},
   loading: false,
   error: null,
 
   loadAll: async () => {
     set({ loading: true, error: null });
     try {
-      const tasks = await api.listTasks();
-      // Load reminders for all tasks (single query would be nicer; do one-shot multi for now)
+      const [tasks, subtaskCounts] = await Promise.all([
+        api.listTasks(),
+        subtasksApi.listSubtaskCounts(),
+      ]);
       const reminderMap: Record<number, ReminderInfo> = {};
       for (const task of tasks) {
         const reminders = await remindersApi.listRemindersByTask(task.id);
@@ -51,7 +62,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
           };
         }
       }
-      set({ tasks, reminderMap, loading: false });
+      const subtaskCountMap: Record<number, SubtaskProgress> = {};
+      for (const row of subtaskCounts) {
+        subtaskCountMap[row.task_id] = { done: row.done, total: row.total };
+      }
+      set({ tasks, reminderMap, subtaskCountMap, loading: false });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : String(err), loading: false });
     }
@@ -88,9 +103,12 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     await api.deleteTask(id);
     const map = { ...get().reminderMap };
     delete map[id];
+    const subtaskMap = { ...get().subtaskCountMap };
+    delete subtaskMap[id];
     set({
       tasks: get().tasks.filter((t) => t.id !== id),
       reminderMap: map,
+      subtaskCountMap: subtaskMap,
     });
   },
 
@@ -126,6 +144,30 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       delete map[taskId];
     }
     set({ reminderMap: map });
+  },
+
+  refreshSubtaskCounts: async (taskId) => {
+    if (taskId != null) {
+      const rows = await subtasksApi.listSubtasks(taskId);
+      const map = { ...get().subtaskCountMap };
+      if (rows.length === 0) {
+        delete map[taskId];
+      } else {
+        map[taskId] = {
+          done: rows.filter((s) => s.done === 1).length,
+          total: rows.length,
+        };
+      }
+      set({ subtaskCountMap: map });
+      return;
+    }
+
+    const counts = await subtasksApi.listSubtaskCounts();
+    const map: Record<number, SubtaskProgress> = {};
+    for (const row of counts) {
+      map[row.task_id] = { done: row.done, total: row.total };
+    }
+    set({ subtaskCountMap: map });
   },
 }));
 

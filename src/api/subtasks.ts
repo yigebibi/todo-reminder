@@ -1,6 +1,19 @@
 import { exec, nowSec, query } from './db';
 import type { Subtask } from '../types/models';
 
+export interface SubtaskCount {
+  task_id: number;
+  total: number;
+  done: number;
+}
+
+export async function listSubtaskCounts(): Promise<SubtaskCount[]> {
+  return query<SubtaskCount>(
+    `SELECT task_id, COUNT(*) AS total, COALESCE(SUM(done), 0) AS done
+     FROM subtasks GROUP BY task_id`
+  );
+}
+
 export async function listSubtasks(taskId: number): Promise<Subtask[]> {
   return query<Subtask>(
     `SELECT * FROM subtasks WHERE task_id = ? ORDER BY sort_order ASC, id ASC`,
@@ -31,4 +44,20 @@ export async function renameSubtask(id: number, title: string): Promise<void> {
 
 export async function deleteSubtask(id: number): Promise<void> {
   await exec('DELETE FROM subtasks WHERE id = ?', [id]);
+}
+
+export async function moveSubtask(id: number, direction: 'up' | 'down'): Promise<void> {
+  const [current] = await query<Subtask>('SELECT * FROM subtasks WHERE id = ?', [id]);
+  if (!current) return;
+
+  const siblings = await listSubtasks(current.task_id);
+  const idx = siblings.findIndex((s) => s.id === id);
+  if (idx < 0) return;
+
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= siblings.length) return;
+
+  const neighbor = siblings[swapIdx];
+  await exec('UPDATE subtasks SET sort_order = ? WHERE id = ?', [neighbor.sort_order, current.id]);
+  await exec('UPDATE subtasks SET sort_order = ? WHERE id = ?', [current.sort_order, neighbor.id]);
 }

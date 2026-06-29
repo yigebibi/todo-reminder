@@ -23,6 +23,7 @@ import { onAppEvent } from '../lib/events';
 import { toast } from '../stores/toastStore';
 import type { Task } from '../types/models';
 import { cn } from '../lib/utils';
+import * as subtasksApi from '../api/subtasks';
 
 type ColumnKey = 'today' | 'week' | 'backlog' | 'done';
 
@@ -81,6 +82,7 @@ function matchesQuery(task: Task, q: string): boolean {
 export function KanbanView() {
   const tasks = useTaskStore((s) => s.tasks);
   const reminderMap = useTaskStore((s) => s.reminderMap);
+  const subtaskCountMap = useTaskStore((s) => s.subtaskCountMap);
   const loading = useTaskStore((s) => s.loading);
   const error = useTaskStore((s) => s.error);
   const loadAll = useTaskStore((s) => s.loadAll);
@@ -91,6 +93,7 @@ export function KanbanView() {
   const remove = useTaskStore((s) => s.remove);
   const setReminder = useTaskStore((s) => s.setReminder);
   const clearReminder = useTaskStore((s) => s.clearReminder);
+  const refreshSubtaskCounts = useTaskStore((s) => s.refreshSubtaskCounts);
 
   const viewMode = useUIStore((s) => s.viewMode);
   const searchQuery = useUIStore((s) => s.searchQuery);
@@ -153,7 +156,7 @@ export function KanbanView() {
 
   async function handleFormSubmit(values: TaskFormValues) {
     try {
-      const { reminder_offset, ...taskInput } = values;
+      const { reminder_offset, subtask_titles, ...taskInput } = values;
       let taskId: number;
       if (editing) {
         const updated = await patch(editing.id, taskInput);
@@ -161,6 +164,12 @@ export function KanbanView() {
       } else {
         const created = await add(taskInput);
         taskId = created.id;
+        for (const title of subtask_titles) {
+          await subtasksApi.createSubtask(taskId, title);
+        }
+        if (subtask_titles.length > 0) {
+          await refreshSubtaskCounts(taskId);
+        }
       }
       if (values.due_at != null && reminder_offset != null) {
         await setReminder(taskId, values.due_at, reminder_offset);
@@ -277,6 +286,7 @@ export function KanbanView() {
                         key={task.id}
                         task={task}
                         hasReminder={!!reminderMap[task.id]}
+                        subtaskProgress={subtaskCountMap[task.id]}
                         onToggleDone={() =>
                           task.status === 'done' ? uncomplete(task.id) : complete(task.id)
                         }
@@ -310,6 +320,9 @@ export function KanbanView() {
         onOpenChange={setFormOpen}
         onSubmit={handleFormSubmit}
         onDelete={editing ? handleFormDelete : undefined}
+        onSubtaskProgressChange={() => {
+          if (editing) void refreshSubtaskCounts(editing.id);
+        }}
       />
     </div>
   );

@@ -10,6 +10,7 @@ import { DateTimePicker } from './ui/DateTimePicker';
 import { fromUnix, toUnix } from '../lib/datetime';
 import { PRIORITY, PRIORITY_LABEL, type Priority, type Task } from '../types/models';
 import { cn } from '../lib/utils';
+import { SubtaskList } from './SubtaskList';
 
 type ReminderOffset = 'none' | 5 | 15 | 60 | 1440;
 
@@ -28,6 +29,7 @@ export interface TaskFormValues {
   start_at: number | null;
   due_at: number | null;
   reminder_offset: number | null; // minutes before due_at; null = no reminder
+  subtask_titles: string[];
 }
 
 interface TaskFormProps {
@@ -37,6 +39,7 @@ interface TaskFormProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: TaskFormValues) => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
+  onSubtaskProgressChange?: () => void;
 }
 
 export function TaskForm({
@@ -46,6 +49,7 @@ export function TaskForm({
   onOpenChange,
   onSubmit,
   onDelete,
+  onSubtaskProgressChange,
 }: TaskFormProps) {
   const isEdit = !!task;
   const [title, setTitle] = useState('');
@@ -56,6 +60,7 @@ export function TaskForm({
   const [reminder, setReminder] = useState<ReminderOffset>('none');
   const [submitting, setSubmitting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [draftSubtaskTitles, setDraftSubtaskTitles] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -71,6 +76,7 @@ export function TaskForm({
         setReminder('none');
       }
       setConfirmingDelete(false);
+      setDraftSubtaskTitles([]);
     }
   }, [open, task, initialReminderOffset]);
 
@@ -103,6 +109,7 @@ export function TaskForm({
         due_at: dueDate ? toUnix(dueDate) : null,
         reminder_offset:
           hasDueAt && reminder !== 'none' ? (reminder as number) : null,
+        subtask_titles: isEdit ? [] : draftSubtaskTitles,
       });
       onOpenChange(false);
     } finally {
@@ -153,6 +160,13 @@ export function TaskForm({
             />
           </div>
         </div>
+
+        <SubtaskList
+          taskId={isEdit ? task?.id : null}
+          draftTitles={draftSubtaskTitles}
+          onDraftTitlesChange={setDraftSubtaskTitles}
+          onProgressChange={onSubtaskProgressChange}
+        />
 
         {/* --- Schedule --- */}
         <section className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3.5">

@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import type { Task, TaskCreateInput, TaskUpdateInput } from '../types/models';
+import type { Task, TaskCreateInput, TaskUpdateInput, Tag } from '../types/models';
 import * as api from '../api/tasks';
 import * as remindersApi from '../api/reminders';
 import * as subtasksApi from '../api/subtasks';
+import * as tagsApi from '../api/tags';
 import { recentDays, taskCoversThisWeek, taskCoversToday } from '../lib/datetime';
 
 interface ReminderInfo {
@@ -20,6 +21,7 @@ interface TaskStore {
   tasks: Task[];
   reminderMap: Record<number, ReminderInfo | undefined>;
   subtaskCountMap: Record<number, SubtaskProgress | undefined>;
+  taskTagMap: Record<number, Tag[] | undefined>;
   loading: boolean;
   error: string | null;
 
@@ -34,21 +36,24 @@ interface TaskStore {
   clearReminder: (taskId: number) => Promise<void>;
   refreshReminder: (taskId: number) => Promise<void>;
   refreshSubtaskCounts: (taskId?: number) => Promise<void>;
+  refreshTaskTags: (taskId?: number) => Promise<void>;
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
   reminderMap: {},
   subtaskCountMap: {},
+  taskTagMap: {},
   loading: false,
   error: null,
 
   loadAll: async () => {
     set({ loading: true, error: null });
     try {
-      const [tasks, subtaskCounts] = await Promise.all([
+      const [tasks, subtaskCounts, taskTagMap] = await Promise.all([
         api.listTasks(),
         subtasksApi.listSubtaskCounts(),
+        tagsApi.listTaskTagsMap(),
       ]);
       const reminderMap: Record<number, ReminderInfo> = {};
       for (const task of tasks) {
@@ -66,7 +71,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       for (const row of subtaskCounts) {
         subtaskCountMap[row.task_id] = { done: row.done, total: row.total };
       }
-      set({ tasks, reminderMap, subtaskCountMap, loading: false });
+      set({ tasks, reminderMap, subtaskCountMap, taskTagMap, loading: false });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : String(err), loading: false });
     }
@@ -105,10 +110,13 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     delete map[id];
     const subtaskMap = { ...get().subtaskCountMap };
     delete subtaskMap[id];
+    const tagMap = { ...get().taskTagMap };
+    delete tagMap[id];
     set({
       tasks: get().tasks.filter((t) => t.id !== id),
       reminderMap: map,
       subtaskCountMap: subtaskMap,
+      taskTagMap: tagMap,
     });
   },
 
@@ -168,6 +176,23 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       map[row.task_id] = { done: row.done, total: row.total };
     }
     set({ subtaskCountMap: map });
+  },
+
+  refreshTaskTags: async (taskId) => {
+    if (taskId != null) {
+      const tags = await tagsApi.getTaskTags(taskId);
+      const map = { ...get().taskTagMap };
+      if (tags.length === 0) {
+        delete map[taskId];
+      } else {
+        map[taskId] = tags;
+      }
+      set({ taskTagMap: map });
+      return;
+    }
+
+    const taskTagMap = await tagsApi.listTaskTagsMap();
+    set({ taskTagMap });
   },
 }));
 

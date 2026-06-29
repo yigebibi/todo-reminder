@@ -24,6 +24,7 @@ import { toast } from '../stores/toastStore';
 import type { Task } from '../types/models';
 import { cn } from '../lib/utils';
 import * as subtasksApi from '../api/subtasks';
+import * as tagsApi from '../api/tags';
 
 type ColumnKey = 'today' | 'week' | 'backlog' | 'done';
 
@@ -83,6 +84,7 @@ export function KanbanView() {
   const tasks = useTaskStore((s) => s.tasks);
   const reminderMap = useTaskStore((s) => s.reminderMap);
   const subtaskCountMap = useTaskStore((s) => s.subtaskCountMap);
+  const taskTagMap = useTaskStore((s) => s.taskTagMap);
   const loading = useTaskStore((s) => s.loading);
   const error = useTaskStore((s) => s.error);
   const loadAll = useTaskStore((s) => s.loadAll);
@@ -94,6 +96,7 @@ export function KanbanView() {
   const setReminder = useTaskStore((s) => s.setReminder);
   const clearReminder = useTaskStore((s) => s.clearReminder);
   const refreshSubtaskCounts = useTaskStore((s) => s.refreshSubtaskCounts);
+  const refreshTaskTags = useTaskStore((s) => s.refreshTaskTags);
 
   const viewMode = useUIStore((s) => s.viewMode);
   const searchQuery = useUIStore((s) => s.searchQuery);
@@ -156,7 +159,7 @@ export function KanbanView() {
 
   async function handleFormSubmit(values: TaskFormValues) {
     try {
-      const { reminder_offset, subtask_titles, ...taskInput } = values;
+      const { reminder_offset, subtask_titles, tag_ids, ...taskInput } = values;
       let taskId: number;
       if (editing) {
         const updated = await patch(editing.id, taskInput);
@@ -169,6 +172,12 @@ export function KanbanView() {
         }
         if (subtask_titles.length > 0) {
           await refreshSubtaskCounts(taskId);
+        }
+        for (const tagId of tag_ids) {
+          await tagsApi.assignTag(taskId, tagId);
+        }
+        if (tag_ids.length > 0) {
+          await refreshTaskTags(taskId);
         }
       }
       if (values.due_at != null && reminder_offset != null) {
@@ -242,6 +251,7 @@ export function KanbanView() {
         <CalendarMonth
           tasks={filteredTasks}
           reminderMap={reminderMap}
+          taskTagMap={taskTagMap}
           onOpenTask={openEdit}
         />
       ) : (
@@ -287,6 +297,7 @@ export function KanbanView() {
                         task={task}
                         hasReminder={!!reminderMap[task.id]}
                         subtaskProgress={subtaskCountMap[task.id]}
+                        tags={taskTagMap[task.id]}
                         onToggleDone={() =>
                           task.status === 'done' ? uncomplete(task.id) : complete(task.id)
                         }
@@ -322,6 +333,9 @@ export function KanbanView() {
         onDelete={editing ? handleFormDelete : undefined}
         onSubtaskProgressChange={() => {
           if (editing) void refreshSubtaskCounts(editing.id);
+        }}
+        onTagsChange={() => {
+          if (editing) void refreshTaskTags(editing.id);
         }}
       />
     </div>

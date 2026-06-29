@@ -1,10 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Moon, Sun, Info, Globe2 } from 'lucide-react';
+import { Moon, Sun, Info, Globe2, Tag, Trash2, Plus } from 'lucide-react';
 import { Dialog } from './ui/Dialog';
 import { Switch } from './ui/Switch';
 import { Select } from './ui/Select';
+import { Input } from './ui/Input';
+import { Button } from './ui/Button';
+import { TagChip } from './TagChip';
 import { useSettingsStore, type Region, type Theme } from '../stores/settingsStore';
 import { getAutostartEnabled, setAutostartEnabled } from '../api/autostart';
+import * as tagsApi from '../api/tags';
+import type { Tag as TagModel } from '../types/models';
+import { toast } from '../stores/toastStore';
 import { REGION_LABELS, detectDefaultRegion } from '../lib/lunar';
 import { cn } from '../lib/utils';
 
@@ -22,11 +28,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tags, setTags] = useState<TagModel[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#6B7280');
 
   useEffect(() => {
     if (!open) return;
     setError(null);
     getAutostartEnabled().then(setAutostart);
+    setTagsLoading(true);
+    tagsApi
+      .listTags()
+      .then(setTags)
+      .finally(() => setTagsLoading(false));
   }, [open]);
 
   async function toggleAutostart(next: boolean) {
@@ -39,6 +54,44 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function reloadTags() {
+    const list = await tagsApi.listTags();
+    setTags(list);
+  }
+
+  async function handleCreateTag() {
+    const name = newTagName.trim();
+    if (!name) return;
+    try {
+      await tagsApi.createTag(name, newTagColor);
+      setNewTagName('');
+      setNewTagColor('#6B7280');
+      await reloadTags();
+      toast.success('標籤已新增');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleDeleteTag(id: number) {
+    try {
+      await tagsApi.deleteTag(id);
+      await reloadTags();
+      toast.success('標籤已刪除');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleColorChange(id: number, color: string) {
+    try {
+      await tagsApi.updateTagColor(id, color);
+      setTags((prev) => prev.map((t) => (t.id === id ? { ...t, color } : t)));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -85,6 +138,85 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </option>
             ))}
           </Select>
+        </section>
+
+        <section className="space-y-3 border-t border-border/50 pt-4">
+          <div className="flex items-center gap-2">
+            <Tag className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2.2} />
+            <h3 className="text-sm font-semibold">標籤管理</h3>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            在此新增或調整標籤顏色。任務表單中可為任務指派標籤。
+          </p>
+
+          {tagsLoading ? (
+            <p className="text-xs text-muted-foreground">載入標籤…</p>
+          ) : tags.length === 0 ? (
+            <p className="text-xs text-muted-foreground">尚無標籤。</p>
+          ) : (
+            <ul className="space-y-2">
+              {tags.map((tag) => (
+                <li
+                  key={tag.id}
+                  className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/20 px-2 py-1.5"
+                >
+                  <TagChip tag={tag} className="max-w-[100px]" />
+                  <input
+                    type="color"
+                    value={tag.color}
+                    onChange={(e) => void handleColorChange(tag.id, e.target.value)}
+                    className="h-7 w-9 shrink-0 cursor-pointer rounded border border-border/60 bg-background p-0.5"
+                    aria-label={`${tag.name} 顏色`}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                    {tag.name}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => void handleDeleteTag(tag.id)}
+                    aria-label={`刪除 ${tag.name}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="flex gap-2">
+            <Input
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void handleCreateTag();
+                }
+              }}
+              placeholder="新標籤名稱"
+              className="h-8 flex-1 text-sm"
+            />
+            <input
+              type="color"
+              value={newTagColor}
+              onChange={(e) => setNewTagColor(e.target.value)}
+              className="h-8 w-10 shrink-0 cursor-pointer rounded border border-border/60 bg-background p-0.5"
+              aria-label="新標籤顏色"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => void handleCreateTag()}
+              disabled={!newTagName.trim()}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </section>
 
         <section className="flex items-start justify-between gap-4 border-t border-border/50 pt-4">

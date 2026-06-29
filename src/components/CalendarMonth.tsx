@@ -18,7 +18,8 @@ import {
 } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { cn } from '../lib/utils';
-import type { Task } from '../types/models';
+import type { Tag, Task } from '../types/models';
+import { TagDot } from './TagChip';
 import { taskWindowOverlaps, toUnix } from '../lib/datetime';
 import { getLunarCellInfo } from '../lib/lunar';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -44,7 +45,13 @@ function shortenLabel(raw: string): string {
 interface Props {
   tasks: Task[];
   reminderMap?: Record<number, { remindAt: number } | undefined>;
+  taskTagMap?: Record<number, Tag[] | undefined>;
   onOpenTask: (task: Task) => void;
+}
+
+function taskTitleWithTags(task: Task, tags?: Tag[]): string {
+  if (!tags?.length) return task.title;
+  return `${task.title} · ${tags.map((t) => t.name).join(', ')}`;
 }
 
 const priorityPillClass: Record<number, string> = {
@@ -367,7 +374,7 @@ function formatUpcomingTime(t: Task): string {
 }
 
 // ---- Main CalendarMonth (sidebar + grid) ----
-export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
+export function CalendarMonth({ tasks, reminderMap, taskTagMap, onOpenTask }: Props) {
   const [cursor, setCursor] = useState(() => new Date());
   const region = useSettingsStore((s) => s.region);
   const weather = useWeatherStore((s) => s.forecast);
@@ -573,6 +580,8 @@ export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
                 <div className="mt-1 flex min-h-0 flex-1 flex-col gap-[3px] overflow-hidden">
                   {dayTasks.slice(0, MAX_TASKS_PER_CELL).map((t) => {
                     const reminded = !!reminderMap?.[t.id];
+                    const tags = taskTagMap?.[t.id];
+                    const firstTag = tags?.[0];
                     const isRange = t.start_at != null && t.due_at != null;
                     const done = t.status === 'done';
 
@@ -582,7 +591,7 @@ export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
                           key={t.id}
                           type="button"
                           onClick={() => onOpenTask(t)}
-                          title={t.title}
+                          title={taskTitleWithTags(t, tags)}
                           className={cn(
                             'flex min-w-0 items-center gap-1 overflow-hidden rounded-[4px] px-1.5 py-[2px] text-left text-[11.5px] leading-[1.3]',
                             'transition-opacity duration-100 ease-out hover:opacity-85',
@@ -590,6 +599,7 @@ export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
                             done && 'line-through opacity-50'
                           )}
                         >
+                          {firstTag && <TagDot color={firstTag.color} className="h-1.5 w-1.5" />}
                           <span className="flex-1 truncate font-medium">{t.title}</span>
                           {reminded && !done && (
                             <Bell className="h-2.5 w-2.5 shrink-0 opacity-80" strokeWidth={2.5} />
@@ -610,17 +620,21 @@ export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
                         key={t.id}
                         type="button"
                         onClick={() => onOpenTask(t)}
-                        title={t.title}
+                        title={taskTitleWithTags(t, tags)}
                         className={cn(
                           'flex min-w-0 items-center gap-1.5 overflow-hidden rounded-[3px] px-1 py-[1px] text-left text-[11.5px] leading-[1.3] text-foreground',
                           'transition-colors duration-100 ease-out hover:bg-accent',
                           done && 'text-muted-foreground line-through opacity-55'
                         )}
                       >
-                        <Circle
-                          className={cn('h-2.5 w-2.5 shrink-0', priorityStrokeClass)}
-                          strokeWidth={2.5}
-                        />
+                        {firstTag ? (
+                          <TagDot color={firstTag.color} className="h-2 w-2" />
+                        ) : (
+                          <Circle
+                            className={cn('h-2.5 w-2.5 shrink-0', priorityStrokeClass)}
+                            strokeWidth={2.5}
+                          />
+                        )}
                         <span className="flex-1 truncate">{t.title}</span>
                         {reminded && !done && (
                           <Bell className="h-2.5 w-2.5 shrink-0 text-primary" strokeWidth={2.5} />

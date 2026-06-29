@@ -17,6 +17,30 @@ export async function deleteTag(id: number): Promise<void> {
   await exec('DELETE FROM tags WHERE id = ?', [id]);
 }
 
+export async function updateTagColor(id: number, color: string): Promise<void> {
+  await exec('UPDATE tags SET color = ? WHERE id = ?', [color, id]);
+}
+
+interface TaskTagRow extends Tag {
+  task_id: number;
+}
+
+export async function listTaskTagsMap(): Promise<Record<number, Tag[]>> {
+  const rows = await query<TaskTagRow>(
+    `SELECT tt.task_id, t.id, t.name, t.color
+     FROM task_tags tt
+     INNER JOIN tags t ON t.id = tt.tag_id
+     ORDER BY t.name`
+  );
+  const map: Record<number, Tag[]> = {};
+  for (const row of rows) {
+    const { task_id, ...tag } = row;
+    if (!map[task_id]) map[task_id] = [];
+    map[task_id].push(tag);
+  }
+  return map;
+}
+
 export async function getTaskTags(taskId: number): Promise<Tag[]> {
   return query<Tag>(
     `SELECT t.* FROM tags t

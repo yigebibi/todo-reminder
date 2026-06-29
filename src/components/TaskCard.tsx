@@ -2,12 +2,14 @@ import { Clock, Flame, Bell, CalendarRange } from 'lucide-react';
 import { Checkbox } from './ui/Checkbox';
 import { cn } from '../lib/utils';
 import { formatSchedule } from '../lib/datetime';
-import { PRIORITY_LABEL, type Task } from '../types/models';
+import { PRIORITY_LABEL, type Tag, type Task } from '../types/models';
+import { TagChip } from './TagChip';
 
 interface TaskCardProps {
   task: Task;
   hasReminder?: boolean;
   subtaskProgress?: { done: number; total: number };
+  tags?: Tag[];
   onToggleDone: () => void;
   onOpen: () => void;
 }
@@ -19,7 +21,7 @@ const priorityBarClass: Record<number, string> = {
   3: 'bg-[hsl(var(--prio-urgent))]',
 };
 
-export function TaskCard({ task, hasReminder, subtaskProgress, onToggleDone, onOpen }: TaskCardProps) {
+export function TaskCard({ task, hasReminder, subtaskProgress, tags, onToggleDone, onOpen }: TaskCardProps) {
   const done = task.status === 'done';
   const isOverdue = !done && task.due_at != null && task.due_at * 1000 < Date.now();
   const hasRange = task.start_at != null && task.due_at != null;
@@ -101,6 +103,17 @@ export function TaskCard({ task, hasReminder, subtaskProgress, onToggleDone, onO
             <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
               {subtaskProgress.done}/{subtaskProgress.total}
             </span>
+          </div>
+        )}
+
+        {tags && tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            {tags.slice(0, 3).map((tag) => (
+              <TagChip key={tag.id} tag={tag} />
+            ))}
+            {tags.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">+{tags.length - 3}</span>
+            )}
           </div>
         )}
 

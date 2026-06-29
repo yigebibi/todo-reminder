@@ -11,6 +11,7 @@ import { fromUnix, toUnix } from '../lib/datetime';
 import { PRIORITY, PRIORITY_LABEL, type Priority, type Task } from '../types/models';
 import { cn } from '../lib/utils';
 import { SubtaskList } from './SubtaskList';
+import { TagPicker } from './TagPicker';
 
 type ReminderOffset = 'none' | 5 | 15 | 60 | 1440;
 
@@ -30,6 +31,7 @@ export interface TaskFormValues {
   due_at: number | null;
   reminder_offset: number | null; // minutes before due_at; null = no reminder
   subtask_titles: string[];
+  tag_ids: number[];
 }
 
 interface TaskFormProps {
@@ -40,6 +42,7 @@ interface TaskFormProps {
   onSubmit: (values: TaskFormValues) => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
   onSubtaskProgressChange?: () => void;
+  onTagsChange?: () => void;
 }
 
 export function TaskForm({
@@ -50,6 +53,7 @@ export function TaskForm({
   onSubmit,
   onDelete,
   onSubtaskProgressChange,
+  onTagsChange,
 }: TaskFormProps) {
   const isEdit = !!task;
   const [title, setTitle] = useState('');
@@ -61,6 +65,7 @@ export function TaskForm({
   const [submitting, setSubmitting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [draftSubtaskTitles, setDraftSubtaskTitles] = useState<string[]>([]);
+  const [draftTagIds, setDraftTagIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -77,6 +82,7 @@ export function TaskForm({
       }
       setConfirmingDelete(false);
       setDraftSubtaskTitles([]);
+      setDraftTagIds([]);
     }
   }, [open, task, initialReminderOffset]);
 
@@ -110,6 +116,7 @@ export function TaskForm({
         reminder_offset:
           hasDueAt && reminder !== 'none' ? (reminder as number) : null,
         subtask_titles: isEdit ? [] : draftSubtaskTitles,
+        tag_ids: isEdit ? [] : draftTagIds,
       });
       onOpenChange(false);
     } finally {
@@ -166,6 +173,13 @@ export function TaskForm({
           draftTitles={draftSubtaskTitles}
           onDraftTitlesChange={setDraftSubtaskTitles}
           onProgressChange={onSubtaskProgressChange}
+        />
+
+        <TagPicker
+          taskId={isEdit ? task?.id : null}
+          draftTagIds={draftTagIds}
+          onDraftTagIdsChange={setDraftTagIds}
+          onTagsChange={onTagsChange}
         />
 
         {/* --- Schedule --- */}

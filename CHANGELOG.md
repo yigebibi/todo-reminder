@@ -9,9 +9,10 @@
 ### Added
 - 子任務 UI：任務表單內可新增 / 編輯 / 刪除 / 排序子任務；看板卡片顯示完成進度（如 2/5）
 - 子任務 API：`listSubtaskCounts`、`moveSubtask`（上移 / 下移）
+- 標籤 UI：任務表單多選標籤、設定頁標籤管理（增刪改色）、看板卡片與月曆任務顯示彩色 chip / 色點
+- 標籤 API：`updateTagColor`、`listTaskTagsMap`
 
 ### Planned
-- 標籤 UI
 - 多提醒（目前一任務只能綁一個主提醒）
 - 通知 action buttons（「完成」「稍後提醒」直接從 toast 觸發）
 - 全域系統快捷鍵（跨 app 喚起快速新增迷你視窗）

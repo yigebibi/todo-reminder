@@ -1,19 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Plus,
   Sparkles,
   CalendarDays,
   CalendarRange,
   ListTodo,
   CheckCheck,
   Search,
-  X,
-  Columns3,
-  Calendar as CalendarIcon,
 } from 'lucide-react';
-import * as chrono from 'chrono-node';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { TaskCard } from '../components/TaskCard';
 import { TaskForm, type TaskFormValues } from '../components/TaskForm';
 import { CalendarMonth } from '../components/CalendarMonth';
@@ -24,14 +18,13 @@ import {
   selectToday,
   useTaskStore,
 } from '../stores/taskStore';
-import { toUnix } from '../lib/datetime';
+import { useUIStore } from '../stores/uiStore';
 import { onAppEvent } from '../lib/events';
 import { toast } from '../stores/toastStore';
 import type { Task } from '../types/models';
 import { cn } from '../lib/utils';
 
 type ColumnKey = 'today' | 'week' | 'backlog' | 'done';
-type ViewMode = 'kanban' | 'calendar';
 
 import type { LucideIcon } from 'lucide-react';
 
@@ -99,36 +92,23 @@ export function KanbanView() {
   const setReminder = useTaskStore((s) => s.setReminder);
   const clearReminder = useTaskStore((s) => s.clearReminder);
 
-  const [quickTitle, setQuickTitle] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const viewMode = useUIStore((s) => s.viewMode);
+  const searchQuery = useUIStore((s) => s.searchQuery);
+  const setSearchQuery = useUIStore((s) => s.setSearchQuery);
+
   const [editing, setEditing] = useState<Task | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
 
-  // Surface store errors via toast (load/save failures etc.).
   useEffect(() => {
     if (error) toast.error(error);
   }, [error]);
 
-  // Global shortcut integration: Ctrl+N opens new task dialog; Ctrl+F focuses search.
   useEffect(() => {
-    const offNew = onAppEvent('app:newTask', () => openCreate());
-    const offFocus = onAppEvent('app:focusSearch', () => {
-      const el = searchInputRef.current;
-      if (el) {
-        el.focus();
-        el.select();
-      }
-    });
-    return () => {
-      offNew();
-      offFocus();
-    };
+    return onAppEvent('app:newTask', () => openCreate());
   }, []);
 
   const filteredTasks = useMemo(() => {
@@ -160,20 +140,6 @@ export function KanbanView() {
 
   const showOnboarding = !loading && tasks.length === 0 && !searchQuery;
   const showNoResults = !loading && searchQuery && totalMatches === 0;
-
-  async function handleQuickAdd(e: React.FormEvent) {
-    e.preventDefault();
-    const title = quickTitle.trim();
-    if (!title) return;
-    try {
-      const parsed = chrono.parseDate(title, new Date(), { forwardDate: true });
-      await add({ title, due_at: parsed ? toUnix(parsed) : null });
-      setQuickTitle('');
-      toast.success('任務已新增');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
-  }
 
   function openCreate() {
     setEditing(null);
@@ -221,65 +187,6 @@ export function KanbanView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border/60 bg-background/70 px-6 py-3 space-y-2.5 backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div className="inline-flex rounded-lg border border-border/60 bg-card p-0.5 shadow-card">
-            <ViewTab
-              active={viewMode === 'kanban'}
-              onClick={() => setViewMode('kanban')}
-              icon={<Columns3 className="h-3.5 w-3.5" />}
-              label="看板"
-            />
-            <ViewTab
-              active={viewMode === 'calendar'}
-              onClick={() => setViewMode('calendar')}
-              icon={<CalendarIcon className="h-3.5 w-3.5" />}
-              label="月曆"
-            />
-          </div>
-
-          <div className="relative flex-1 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={searchInputRef}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜尋 ⌃F"
-              className="pl-9 pr-8"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                aria-label="清除搜尋"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <form onSubmit={handleQuickAdd} className="flex gap-2">
-          <div className="relative flex-1">
-            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary/70" />
-            <Input
-              value={quickTitle}
-              onChange={(e) => setQuickTitle(e.target.value)}
-              placeholder='輸入任務與時間，如：「明天下午 3 點跟 Kevin 開會」'
-              className="pl-9"
-            />
-          </div>
-          <Button type="submit" disabled={!quickTitle.trim()}>
-            <Plus className="mr-1 h-4 w-4" />
-            新增
-          </Button>
-          <Button type="button" variant="outline" onClick={openCreate} title="Ctrl+N">
-            進階
-          </Button>
-        </form>
-      </div>
-
       {showOnboarding ? (
         <div className="flex flex-1 items-center justify-center px-6">
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border/60 bg-card p-8 text-center shadow-float">
@@ -405,34 +312,5 @@ export function KanbanView() {
         onDelete={editing ? handleFormDelete : undefined}
       />
     </div>
-  );
-}
-
-function ViewTab({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all',
-        active
-          ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
-          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-      )}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }

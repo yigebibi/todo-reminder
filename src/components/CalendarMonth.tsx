@@ -8,6 +8,7 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  getISOWeek,
   isSameDay,
   isSameMonth,
   startOfDay,
@@ -53,13 +54,6 @@ const priorityPillClass: Record<number, string> = {
   3: 'bg-[hsl(0_85%_93%)]   text-[hsl(0_65%_40%)]   dark:bg-[hsl(0_45%_22%)]   dark:text-[hsl(0_75%_82%)]',
 };
 
-const priorityDotClass: Record<number, string> = {
-  0: 'bg-[hsl(var(--prio-low))]',
-  1: 'bg-[hsl(var(--prio-med))]',
-  2: 'bg-[hsl(var(--prio-high))]',
-  3: 'bg-[hsl(var(--prio-urgent))]',
-};
-
 // Helper: does a task overlap a given day?
 function taskCoversDay(t: Task, day: Date): boolean {
   const s = toUnix(startOfDay(day));
@@ -95,28 +89,42 @@ function MiniMonth({
     return out;
   }, [month]);
 
-  const hasTaskByDay = useMemo(() => {
-    const set = new Set<string>();
+  // Group cells into weeks for per-row CW + row-highlight rendering.
+  const weeks = useMemo(() => {
+    const out: Date[][] = [];
+    for (let i = 0; i < cells.length; i += 7) out.push(cells.slice(i, i + 7));
+    return out;
+  }, [cells]);
+
+  // Per-day dot list: up to 3 small dots colored by task priority (descending).
+  const dotsByDay = useMemo(() => {
+    const colorClass = (p: number) =>
+      p === 3 ? 'bg-[hsl(var(--prio-urgent))]'
+      : p === 2 ? 'bg-[hsl(var(--prio-high))]'
+      : p === 1 ? 'bg-[hsl(var(--prio-med))]'
+      : 'bg-[hsl(var(--prio-low))]';
+    const m = new Map<string, string[]>();
     for (const day of cells) {
+      const hits: number[] = [];
       for (const t of tasks) {
-        if (t.status === 'cancelled') continue;
-        if (taskCoversDay(t, day)) {
-          set.add(day.toDateString());
-          break;
-        }
+        if (t.status === 'cancelled' || t.status === 'done') continue;
+        if (!taskCoversDay(t, day)) continue;
+        hits.push(t.priority);
       }
+      if (hits.length === 0) continue;
+      hits.sort((a, b) => b - a);
+      m.set(day.toDateString(), hits.slice(0, 3).map(colorClass));
     }
-    return set;
+    return m;
   }, [cells, tasks]);
 
   return (
     <div>
+      {/* Title: "2026  4月" side-by-side with nav both on right (Fantastical). */}
       <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[15px] font-semibold leading-none text-foreground">
-            {format(month, 'yyyy 年')}
-          </span>
-          <span className="text-[15px] font-semibold leading-none text-[hsl(0_70%_55%)] dark:text-[hsl(0_75%_72%)]">
+        <div className="flex items-baseline gap-1">
+          <span className="text-[14px] font-semibold leading-none">{format(month, 'yyyy')}</span>
+          <span className="text-[14px] font-semibold leading-none text-[hsl(0_75%_66%)]">
             {format(month, 'M 月')}
           </span>
         </div>
@@ -140,7 +148,11 @@ function MiniMonth({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-y-0.5 text-center">
+      {/* 8 columns: 1 CW + 7 days */}
+      <div className="grid grid-cols-[18px_repeat(7,1fr)] gap-y-0.5 text-center">
+        <div className="font-cjk-ui pb-1 text-right text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">
+          CW
+        </div>
         {MINI_DAY_LABELS.map((l) => (
           <div
             key={l}
@@ -149,31 +161,53 @@ function MiniMonth({
             {l}
           </div>
         ))}
-        {cells.map((day) => {
-          const inCurMonth = isSameMonth(day, month);
-          const isToday = isSameDay(day, today);
-          const has = hasTaskByDay.has(day.toDateString());
+
+        {weeks.map((week, wi) => {
+          const weekNum = getISOWeek(week[0]);
+          const isCurrentWeek = week.some((d) => isSameDay(d, today));
           return (
-            <button
-              key={day.toISOString()}
-              type="button"
-              onClick={() => onSelectDay(day)}
+            <div
+              key={wi}
               className={cn(
-                'relative flex h-7 items-center justify-center rounded-[5px] text-[11px] tabular-nums leading-none transition-colors',
-                !inCurMonth && 'text-muted-foreground/40',
-                inCurMonth && !isToday && 'text-foreground hover:bg-accent',
-                isToday &&
-                  'bg-[hsl(0_72%_52%)] font-semibold text-white hover:bg-[hsl(0_72%_48%)]'
+                'col-span-8 grid grid-cols-[18px_repeat(7,1fr)] rounded-md',
+                isCurrentWeek && 'bg-[hsl(210_100%_65%/0.32)]'
               )}
             >
-              {format(day, 'd')}
-              {has && !isToday && (
-                <span
-                  aria-hidden
-                  className="absolute bottom-[3px] left-1/2 h-[3px] w-[3px] -translate-x-1/2 rounded-full bg-primary"
-                />
-              )}
-            </button>
+              <div className="flex h-7 items-center justify-end pr-1 text-[9.5px] tabular-nums text-muted-foreground/60">
+                {weekNum}
+              </div>
+              {week.map((day) => {
+                const inCurMonth = isSameMonth(day, month);
+                const isToday = isSameDay(day, today);
+                const dots = dotsByDay.get(day.toDateString());
+                return (
+                  <button
+                    key={day.toISOString()}
+                    type="button"
+                    onClick={() => onSelectDay(day)}
+                    className={cn(
+                      'relative flex h-7 items-center justify-center rounded-[5px] text-[11px] tabular-nums leading-none transition-colors',
+                      !inCurMonth && 'text-muted-foreground/40',
+                      inCurMonth && !isToday && 'text-foreground hover:bg-white/10',
+                      isToday &&
+                        'bg-[hsl(0_72%_52%)] font-semibold text-white hover:bg-[hsl(0_72%_48%)]'
+                    )}
+                  >
+                    {format(day, 'd')}
+                    {dots && !isToday && (
+                      <span
+                        aria-hidden
+                        className="absolute bottom-[2px] left-1/2 flex -translate-x-1/2 gap-[2px]"
+                      >
+                        {dots.map((c, i) => (
+                          <span key={i} className={cn('h-[3px] w-[3px] rounded-full', c)} />
+                        ))}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           );
         })}
       </div>
@@ -192,6 +226,7 @@ function UpcomingList({
   reminderMap?: Record<number, { remindAt: number } | undefined>;
 }) {
   const today = new Date();
+  const forecast = useWeatherStore((s) => s.forecast);
 
   const days = useMemo(() => {
     const out: { date: Date; tasks: Task[] }[] = [];
@@ -206,29 +241,47 @@ function UpcomingList({
           const bt = b.due_at ?? b.start_at ?? Infinity;
           return at - bt;
         });
-      out.push({ date: d, tasks: hits });
+      if (hits.length > 0) out.push({ date: d, tasks: hits });
     }
     return out;
   }, [tasks]);
 
   function headingFor(d: Date): string {
     const diff = differenceInCalendarDays(d, today);
-    if (diff === 0) return `今天  ${format(d, 'M/d')}`;
-    if (diff === 1) return `明天  ${format(d, 'M/d')}`;
-    return `${format(d, 'EEEE', { locale: zhTW })}  ${format(d, 'M/d')}`;
+    const dayName = diff === 0 ? '今天' : diff === 1 ? '明天' : format(d, 'EEEE', { locale: zhTW });
+    return `${dayName}  ${format(d, 'M/d')}`;
+  }
+
+  if (days.length === 0) {
+    return (
+      <div className="flex h-full min-h-[120px] flex-col items-center justify-center gap-2 text-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border/70">
+          <Clock className="h-4 w-4 text-muted-foreground/60" strokeWidth={2.2} />
+        </div>
+        <p className="text-[11.5px] text-muted-foreground/70">
+          近 7 天沒有日程
+        </p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
-      {days.map(({ date, tasks: ts }) => (
+      {days.map(({ date, tasks: ts }) => {
+        const w = forecast.get(format(date, 'yyyy-MM-dd'));
+        const wd = w ? describeWeather(w.code) : null;
+        return (
         <div key={date.toDateString()}>
-          <h3 className="font-cjk-ui mb-1 text-[10.5px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            {headingFor(date)}
+          <h3 className="font-cjk-ui mb-1 flex items-center justify-between gap-2 text-[10.5px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            <span>{headingFor(date)}</span>
+            {wd && w && (
+              <span className={cn('flex items-center gap-1 tabular-nums normal-case tracking-normal font-medium', WEATHER_TONE_CLASS[wd.tone])}>
+                <wd.Icon className="h-3 w-3" strokeWidth={2.2} />
+                <span>{w.high}°/{w.low}°</span>
+              </span>
+            )}
           </h3>
-          {ts.length === 0 ? (
-            <p className="text-[11.5px] text-muted-foreground/60">—</p>
-          ) : (
-            <ul className="space-y-1">
+          <ul className="space-y-1">
               {ts.map((t) => {
                 const done = t.status === 'done';
                 const timeStr = formatUpcomingTime(t);
@@ -286,58 +339,9 @@ function UpcomingList({
                 );
               })}
             </ul>
-          )}
         </div>
-      ))}
-    </div>
-  );
-}
-
-// ---- Today weather card (sidebar top) ----
-function TodayWeatherCard() {
-  const forecast = useWeatherStore((s) => s.forecast);
-  const location = useWeatherStore((s) => s.location);
-  const loading = useWeatherStore((s) => s.loading);
-  const today = new Date();
-  const todayKey = format(today, 'yyyy-MM-dd');
-  const w = forecast.get(todayKey);
-
-  return (
-    <div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-[20px] font-bold leading-none tracking-tight text-foreground">
-          {format(today, 'M/d')}
-        </span>
-        <span className="font-cjk-ui text-[11.5px] font-medium text-muted-foreground">
-          {format(today, 'EEEE', { locale: zhTW })}
-        </span>
-      </div>
-      {w ? (
-        (() => {
-          const { Icon, label, tone } = describeWeather(w.code);
-          return (
-            <div className="mt-2 flex items-center gap-2.5 rounded-lg border border-border/50 bg-card px-3 py-2 shadow-card">
-              <Icon className={cn('h-6 w-6 shrink-0', WEATHER_TONE_CLASS[tone])} strokeWidth={1.8} />
-              <div className="flex-1 min-w-0">
-                <div className="font-cjk-ui text-[11.5px] font-medium text-foreground">{label}</div>
-                {location?.city && (
-                  <div className="truncate text-[10.5px] text-muted-foreground">{location.city}</div>
-                )}
-              </div>
-              <div className="text-right">
-                <div className="text-[14px] font-semibold leading-none tabular-nums">{w.high}°</div>
-                <div className="mt-0.5 text-[10.5px] leading-none text-muted-foreground tabular-nums">
-                  {w.low}°
-                </div>
-              </div>
-            </div>
-          );
-        })()
-      ) : loading ? (
-        <div className="mt-2 rounded-lg border border-border/50 bg-card px-3 py-2 text-[11px] text-muted-foreground">
-          載入天氣…
-        </div>
-      ) : null}
+        );
+      })}
     </div>
   );
 }
@@ -346,7 +350,12 @@ function formatUpcomingTime(t: Task): string {
   if (t.start_at && t.due_at) {
     const s = new Date(t.start_at * 1000);
     const e = new Date(t.due_at * 1000);
-    return `${format(s, 'HH:mm')}  –  ${format(e, 'HH:mm')}`;
+    const sameDay = s.toDateString() === e.toDateString();
+    const sStr = format(s, 'HH:mm');
+    const eStr = format(e, 'HH:mm');
+    if (sStr === eStr) return sStr; // single moment
+    if (sameDay) return `${sStr}  –  ${eStr}`; // intra-day range
+    return '全天'; // multi-day spanning task — no specific time on this date
   }
   if (t.due_at) {
     return format(new Date(t.due_at * 1000), 'HH:mm');
@@ -405,16 +414,23 @@ export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
   }, [cells, tasks]);
 
   const today = new Date();
-  const monthNumber = format(cursor, 'M');
-  const yearLabel = format(cursor, 'yyyy');
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      {/* --- Sidebar --- */}
-      <aside className="hidden w-[260px] shrink-0 flex-col border-r border-border/50 bg-muted/25 lg:flex">
-        {/* Fixed top: weather + mini month */}
-        <div className="shrink-0 space-y-5 border-b border-border/40 px-4 pt-4 pb-4">
-          <TodayWeatherCard />
+      {/* --- Sidebar: always dark for Fantastical-style contrast against main --- */}
+      <aside
+        className="dark hidden w-[260px] shrink-0 flex-col border-r lg:flex"
+        style={{
+          background: 'hsl(224 28% 9%)',
+          borderColor: 'hsl(224 20% 18%)',
+          color: 'hsl(220 14% 92%)',
+        }}
+      >
+        {/* Fixed top: mini month only (weather integrates into upcoming headings) */}
+        <div
+          className="shrink-0 border-b px-4 pt-4 pb-4"
+          style={{ borderColor: 'hsl(224 18% 16%)' }}
+        >
           <MiniMonth
             month={cursor}
             tasks={tasks}
@@ -436,43 +452,31 @@ export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
 
       {/* --- Main --- */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-end justify-between px-6 pt-3 pb-3">
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-[34px] font-bold leading-none tracking-[-0.03em] text-foreground">
-              {monthNumber}
-              <span className="ml-0.5 text-[22px] font-semibold text-muted-foreground/80">月</span>
-            </h1>
-            <span className="font-cjk-ui text-[14px] font-medium tabular-nums text-[hsl(0_70%_50%)] dark:text-[hsl(0_75%_68%)]">
-              {yearLabel}
-            </span>
-          </div>
-
-          <div className="flex items-center">
-            <button
-              type="button"
-              aria-label="上個月"
-              onClick={() => setCursor((c) => subMonths(c, 1))}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <ChevronLeft className="h-4 w-4" strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCursor(new Date())}
-              className="rounded-md px-2.5 py-1 text-[12.5px] font-medium text-foreground transition-colors hover:bg-accent"
-            >
-              今天
-            </button>
-            <button
-              type="button"
-              aria-label="下個月"
-              onClick={() => setCursor((c) => addMonths(c, 1))}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <ChevronRight className="h-4 w-4" strokeWidth={2} />
-            </button>
-          </div>
+        {/* Minimal toolbar: just nav — month label comes from cell boundaries like Fantastical */}
+        <div className="flex items-center gap-1 border-b border-border/40 bg-muted/20 px-4 py-1.5">
+          <button
+            type="button"
+            aria-label="上個月"
+            onClick={() => setCursor((c) => subMonths(c, 1))}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCursor(new Date())}
+            className="rounded-md px-3 py-1 text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            今天
+          </button>
+          <button
+            type="button"
+            aria-label="下個月"
+            onClick={() => setCursor((c) => addMonths(c, 1))}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <ChevronRight className="h-4 w-4" strokeWidth={2} />
+          </button>
         </div>
 
         {/* Weekday header */}
@@ -517,10 +521,10 @@ export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
                 key={day.toISOString()}
                 className={cn(
                   'relative flex min-h-0 flex-col overflow-hidden px-1.5 pt-1 pb-1',
-                  !rightEdge && 'border-r border-border/35',
-                  !bottomEdge && 'border-b border-border/35',
+                  !rightEdge && 'border-r border-border/25',
+                  !bottomEdge && 'border-b border-border/25',
                   !inCurMonth && 'bg-muted/15',
-                  isToday && 'bg-[hsl(0_80%_96%)] dark:bg-[hsl(0_30%_15%)]'
+                  isToday && 'bg-[hsl(210_70%_96%)] dark:bg-[hsl(210_25%_14%)]'
                 )}
               >
                 <div className="flex items-baseline gap-1.5 px-0.5">
@@ -593,6 +597,14 @@ export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
                         </button>
                       );
                     }
+                    const priorityStrokeClass =
+                      t.priority === 3
+                        ? 'text-[hsl(var(--prio-urgent))]'
+                        : t.priority === 2
+                        ? 'text-[hsl(var(--prio-high))]'
+                        : t.priority === 1
+                        ? 'text-[hsl(var(--prio-med))]'
+                        : 'text-muted-foreground';
                     return (
                       <button
                         key={t.id}
@@ -605,12 +617,9 @@ export function CalendarMonth({ tasks, reminderMap, onOpenTask }: Props) {
                           done && 'text-muted-foreground line-through opacity-55'
                         )}
                       >
-                        <span
-                          aria-hidden
-                          className={cn(
-                            'h-1.5 w-1.5 shrink-0 rounded-full',
-                            priorityDotClass[t.priority]
-                          )}
+                        <Circle
+                          className={cn('h-2.5 w-2.5 shrink-0', priorityStrokeClass)}
+                          strokeWidth={2.5}
                         />
                         <span className="flex-1 truncate">{t.title}</span>
                         {reminded && !done && (

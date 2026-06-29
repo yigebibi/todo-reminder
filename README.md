@@ -35,6 +35,19 @@
 
 ---
 
+## Git 管理規範
+
+本專案使用 GitHub 作為遠端倉庫（[`yigebibi/todo-reminder`](https://github.com/yigebibi/todo-reminder)），日常開發請遵循分支工作流：
+
+- **`main`** 只保留穩定版本，不直接提交業務代碼
+- 從最新 `main` 建立工作分支（`feature/*`、`fix/*`、`docs/*`、`chore/*`），完成後推送並合併回 `main`
+- 提交訊息採用 [Conventional Commits](https://www.conventionalcommits.org/)，例：`feat(calendar): 月視圖農曆顯示`
+- 不提交 `node_modules/`、`src-tauri/target/`、`.env` 等本地或構建產物
+
+完整流程、常見問題與 AI 助手操作規範見 **[`docs/GIT.md`](./docs/GIT.md)**。發版與版本號政策另見 [`AGENT.md`](./AGENT.md) §11。
+
+---
+
 ## 環境要求
 
 | 工具 | 最低版本 | 備註 |
@@ -108,7 +121,7 @@ todo-reminder/
 │   │   ├── scheduler.rs
 │   │   └── tray.rs
 │   └── migrations/    # SQL migrations
-└── docs/              # 補充設計文檔
+└── docs/              # 補充文檔（含 GIT.md 管理規範）
 ```
 
 ---

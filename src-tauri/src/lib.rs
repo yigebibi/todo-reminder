@@ -2,6 +2,7 @@ use tauri::{Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod backup;
 mod scheduler;
 mod tray;
 
@@ -69,6 +70,13 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             tray::setup(app.handle())?;
+
+            let backup_app = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = backup::run_daily_if_needed(&backup_app).await {
+                    log::error!("每日備份失敗: {e}");
+                }
+            });
 
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {

@@ -12,6 +12,7 @@
 - 標籤 UI：任務表單多選標籤、設定頁標籤管理（增刪改色）、看板卡片與月曆任務顯示彩色 chip / 色點
 - 標籤 API：`updateTagColor`、`listTaskTagsMap`
 - 多提醒：任務可設多條相對截止時間的提醒；修改截止時間後未觸發提醒自動重算
+- 每日自動 DB 備份至 `backups/todo-YYYY-MM-DD.db`，保留 7 天
 
 ### Planned
 - 通知 action buttons（「完成」「稍後提醒」直接從 toast 觸發）

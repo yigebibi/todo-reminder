@@ -3,6 +3,8 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod backup;
+#[cfg(target_os = "windows")]
+mod power;
 mod scheduler;
 mod tray;
 

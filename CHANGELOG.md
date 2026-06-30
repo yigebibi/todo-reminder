@@ -13,11 +13,11 @@
 - 標籤 API：`updateTagColor`、`listTaskTagsMap`
 - 多提醒：任務可設多條相對截止時間的提醒；修改截止時間後未觸發提醒自動重算
 - 每日自動 DB 備份至 `backups/todo-YYYY-MM-DD.db`，保留 7 天
+- 休眠喚醒後立即補發錯過的提醒（Windows power resume 監聽）
 
 ### Planned
 - 通知 action buttons（「完成」「稍後提醒」直接從 toast 觸發）
 - 全域系統快捷鍵（跨 app 喚起快速新增迷你視窗）
-- 睡眠喚醒後補發錯過提醒的壓測
 
 ---
 

@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use sqlx::sqlite::SqlitePoolOptions;
@@ -15,7 +16,7 @@ struct PendingReminder {
     description: Option<String>,
 }
 
-pub async fn start(app: AppHandle) -> Result<(), String> {
+async fn connect_pool(app: &AppHandle) -> Result<SqlitePool, String> {
     let db_path = app
         .path()
         .app_data_dir()
@@ -35,12 +36,22 @@ pub async fn start(app: AppHandle) -> Result<(), String> {
         .map_err(|e| format!("scheduler 連接 DB 失敗: {e}"))?;
 
     log::info!("scheduler: connected to {}", db_url);
+    Ok(pool)
+}
 
+pub async fn start(app: AppHandle) -> Result<(), String> {
+    let pool = Arc::new(connect_pool(&app).await?);
+
+    #[cfg(target_os = "windows")]
+    crate::power::start_resume_listener(app.clone(), pool.clone());
+
+    let app_tick = app.clone();
+    let pool_tick = pool.clone();
     tauri::async_runtime::spawn(async move {
         let mut ticker = interval(Duration::from_secs(TICK_SECS));
         loop {
             ticker.tick().await;
-            if let Err(e) = fire_due(&pool, &app).await {
+            if let Err(e) = fire_due(&pool_tick, &app_tick).await {
                 log::error!("scheduler tick 失敗: {e}");
             }
         }
@@ -49,7 +60,7 @@ pub async fn start(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-async fn fire_due(pool: &SqlitePool, app: &AppHandle) -> Result<(), String> {
+pub(crate) async fn fire_due(pool: &SqlitePool, app: &AppHandle) -> Result<(), String> {
     let now = chrono::Utc::now().timestamp();
 
     let pending: Vec<PendingReminder> = sqlx::query_as(

@@ -15,6 +15,9 @@
 - 每日自動 DB 備份至 `backups/todo-YYYY-MM-DD.db`，保留 7 天
 - 休眠喚醒後立即補發錯過的提醒（Windows power resume 監聽）
 
+### Changed
+- Release 建置日誌級別設為 INFO，避免 sqlx DEBUG 洪水
+
 ### Planned
 - 通知 action buttons（「完成」「稍後提醒」直接從 toast 觸發）
 - 全域系統快捷鍵（跨 app 喚起快速新增迷你視窗）
